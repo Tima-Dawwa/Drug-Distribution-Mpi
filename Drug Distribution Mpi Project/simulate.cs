@@ -8,5 +8,6 @@ namespace Drug_Distribution_Mpi_Project
 {
     class simulate
     {
+
     }
 }
