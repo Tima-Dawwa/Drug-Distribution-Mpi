@@ -33,5 +33,19 @@ namespace Drug_Distribution_Mpi_Project
         public int PharmaciesPerProvince { get; set; }
         public int DistributorsPerProvince { get; set; }
         public int AvgDeliveryTime { get; set; }
+        public int[] OrdersPerProvince
+        {
+            get
+            {
+                int[] orders = new int[NumOfProvinces];
+                int[] pharmacies = new int[PharmaciesPerProvince];
+                int[] clinics = new int[ClinicsPerProvince];
+                for (int i = 0; i < NumOfProvinces; i++)
+                {
+                    orders[i] = pharmacies[i] + clinics[i];
+                }
+                return orders;
+            }
+        }
     }
 }

@@ -9,9 +9,8 @@ namespace Drug_Distribution_Mpi_Project
         public static void Run(int provinceIndex, Intracommunicator provinceComm, InputData input)
         {
             int rank = provinceComm.Rank;
-            int size = provinceComm.Size;
 
-            Console.WriteLine($"[Distributor Rank {rank} | Province {provinceIndex}] Starting distributor process.");
+            Console.WriteLine($"[Distributor Rank {rank} | Province {provinceIndex}] Starting distributor process");
 
             while (true)
             {
@@ -19,14 +18,14 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (task == null)
                 {
-                    Console.WriteLine($"[Distributor Rank {rank}] No more tasks. Exiting.");
+                    Console.WriteLine($"[Distributor Rank {rank}] No more tasks, Exiting..");
                     break;  
                 }
 
                 Console.WriteLine($"[Distributor Rank {rank}] Processing order {task.OrderId}...");
                 Thread.Sleep(input.AvgDeliveryTime * 1000); 
 
-                Console.WriteLine($"[Distributor Rank {rank}] Finished order {task.OrderId}.");
+                Console.WriteLine($"[Distributor Rank {rank}] Finished order {task.OrderId}");
 
                 provinceComm.Send(task.OrderId, 0, 1); 
             }
@@ -39,15 +38,19 @@ namespace Drug_Distribution_Mpi_Project
 
         private static DeliveryTask ReceiveTask(Intracommunicator provinceComm)
         {
-          
-            if (provinceComm.ImmediateProbe(0, 0))
+            Status status = provinceComm.ImmediateProbe(0, 0);
+
+            if (status != null)
             {
                 int orderId = provinceComm.Receive<int>(0, 0);
+
+                if (orderId == -1)
+                    return null;
+
                 return new DeliveryTask { OrderId = orderId };
             }
             else
             {
-             
                 return null;
             }
         }
