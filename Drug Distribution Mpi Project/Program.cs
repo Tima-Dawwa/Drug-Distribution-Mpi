@@ -1,5 +1,7 @@
-﻿using MPI;
+﻿using Drug_Distribution_Mpi_Project.Helper;
+using MPI;
 using System;
+
 
 namespace Drug_Distribution_Mpi_Project
 {
@@ -10,22 +12,27 @@ namespace Drug_Distribution_Mpi_Project
             using (new MPI.Environment(ref args))
             {
                 Intracommunicator comm = Communicator.world;
-                InputData input;
                 int rank = comm.Rank;
                 int size = comm.Size;
+                InputData input;
 
                 if (rank == 0)
                 {
-                    Console.WriteLine("🚀 Starting a parallel drug distribution system using MPI...");
+                    Console.WriteLine(" Starting a parallel drug distribution system using MPI...");
                     input = Input.Read();
+
                     for (int i = 1; i < size; i++)
                     {
                         comm.Send(input, i, 0);
                     }
+
+                    Console.WriteLine("🧠 Master is ready (Rank 0)");
                 }
                 else
                 {
-                    _ = comm.Receive<InputData>(0, 0);
+                    input = comm.Receive<InputData>(0, 0);
+
+                    RoleAssignHelper.AssignAndRun(comm, rank, input);
                 }
             }
         }
