@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Drug_Distribution_Mpi_Project
 {
-    class mpi_helpers
+    class MpiHelpers
     {
     }
 }
