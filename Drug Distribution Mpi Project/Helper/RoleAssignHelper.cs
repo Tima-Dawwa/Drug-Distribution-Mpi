@@ -8,13 +8,11 @@ namespace Drug_Distribution_Mpi_Project.Helper
         public static void AssignAndRun(Intracommunicator worldComm, int rank, InputData input)
         {
             int totalProvinces = input.NumOfProvinces;
-            int ranksPerProvince = input.DistributorsPerProvince + 1; 
-
-            int provinceIndex = (rank - 1) / ranksPerProvince;
+            int provinceIndex = GetProvinceIndex(rank, input);
 
             if (provinceIndex < 0 || provinceIndex >= totalProvinces)
             {
-                Console.WriteLine($"[Rank {rank}] has no assigned role.");
+                Console.WriteLine($"[Rank {rank}] has no assigned role");
                 return;
             }
 
@@ -28,13 +26,30 @@ namespace Drug_Distribution_Mpi_Project.Helper
 
             if (localRank == 0)
             {
-                Province.RunAsLeader(provinceIndex, provinceComm, worldComm, input);
+                Province.RunAsLeader(provinceIndex, provinceComm, input);
             }
             else
             {
                 Distributor.Run(provinceIndex, provinceComm, input);
 
             }
+        }
+        static int GetProvinceIndex(int rank, InputData input)
+        {
+            int currentRank = 1;
+
+            for (int i = 0; i < input.NumOfProvinces; i++)
+            {
+                int provinceSize = 1 + input.DistributorsPerProvince[i];
+
+                if (rank >= currentRank && rank < currentRank + provinceSize)
+                {
+                    return i;
+                }
+
+                currentRank += provinceSize;
+            }
+            throw new Exception($"The rank {rank} does not belong to any province!");
         }
     }
 }
