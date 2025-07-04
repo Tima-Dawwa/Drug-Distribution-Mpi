@@ -12,12 +12,12 @@ namespace Drug_Distribution_Mpi_Project.Helper
 
             if (provinceIndex < 0 || provinceIndex >= totalProvinces)
             {
-                Console.WriteLine($"[Rank {rank}] has no assigned role");
+                Console.WriteLine($"[Rank {rank}] has no assigned role - likely Master process");
                 return;
             }
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[Rank {rank}] → Belongs to province number {provinceIndex}");
+            Console.WriteLine($"[Rank {rank}] → Assigned to Province {provinceIndex}");
             Console.ResetColor();
 
             // Create province communicator
@@ -27,19 +27,26 @@ namespace Drug_Distribution_Mpi_Project.Helper
 
             if (localRank == 0)
             {
-                Console.WriteLine($"[Rank {rank}] Acting as Province {provinceIndex} Leader");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"[Rank {rank}] → PROVINCE {provinceIndex} LEADER (Local Rank: {localRank})");
+                Console.ResetColor();
                 Province.RunAsLeader(provinceIndex, provinceComm, input);
             }
             else
             {
-                Console.WriteLine($"[Rank {rank}] Acting as Distributor in Province {provinceIndex}");
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.WriteLine($"[Rank {rank}] → DISTRIBUTOR in Province {provinceIndex} (Local Rank: {localRank})");
+                Console.ResetColor();
                 Distributor.Run(provinceIndex, provinceComm, input);
             }
         }
 
         static int GetProvinceIndex(int rank, InputData input)
         {
-            int currentRank = 1;
+            // Rank 0 is Master, so skip it
+            if (rank == 0) return -1;
+
+            int currentRank = 1; // Start after Master (rank 0)
 
             for (int i = 0; i < input.NumOfProvinces; i++)
             {
@@ -60,7 +67,7 @@ namespace Drug_Distribution_Mpi_Project.Helper
         // Helper method to get province leader rank from province index
         public static int GetProvinceLeaderRank(int provinceIndex, InputData input)
         {
-            int currentRank = 1;
+            int currentRank = 1; // Start after Master
 
             for (int i = 0; i < provinceIndex; i++)
             {
@@ -81,6 +88,28 @@ namespace Drug_Distribution_Mpi_Project.Helper
             }
 
             return totalRanks;
+        }
+
+        // Helper method to print the rank assignment structure
+        public static void PrintRankAssignments(InputData input)
+        {
+            Console.WriteLine("\n=== RANK ASSIGNMENT STRUCTURE ===");
+            Console.WriteLine("Rank 0: Master Process");
+
+            int currentRank = 1;
+            for (int i = 0; i < input.NumOfProvinces; i++)
+            {
+                Console.WriteLine($"\nProvince {i}:");
+                Console.WriteLine($"  Rank {currentRank}: Province {i} Leader");
+
+                for (int j = 1; j <= input.DistributorsPerProvince[i]; j++)
+                {
+                    Console.WriteLine($"  Rank {currentRank + j}: Distributor {j} in Province {i}");
+                }
+
+                currentRank += 1 + input.DistributorsPerProvince[i];
+            }
+            Console.WriteLine("=====================================\n");
         }
     }
 }
