@@ -23,7 +23,10 @@ namespace Drug_Distribution_Mpi_Project
                 {
                     _ordersCache = new int[NumOfProvinces];
                     for (int i = 0; i < NumOfProvinces; i++)
+                    {
+                        //Console.WriteLine($"PharmaciesPerProvince: {PharmaciesPerProvince[i]} , ClinicsPerProvince: {ClinicsPerProvince[i]} , HospitalsPerProvince: { HospitalsPerProvince[i]}");
                         _ordersCache[i] = PharmaciesPerProvince[i] + ClinicsPerProvince[i] + HospitalsPerProvince[i];
+                    }
                 }
                 return _ordersCache;
             }
@@ -151,20 +154,35 @@ namespace Drug_Distribution_Mpi_Project
         public static InputData LoadFromTextFile(string path = "input_data.txt")
         {
             string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
-
             string runnerFolder = Path.Combine(projectRoot, "Runner");
-
             string inputFile = Path.Combine(runnerFolder, path);
-
             var lines = File.ReadAllLines(inputFile);
+
+            int numProvinces = int.Parse(lines[0]);
+
+            int[] pharmacies = new int[numProvinces];
+            int[] clinics = new int[numProvinces];
+            int[] hospitals = new int[numProvinces];
+
+            for (int i = 0; i < numProvinces; i++)
+            {
+                var parts = lines[i + 1].Split(' ').Select(int.Parse).ToArray();
+                pharmacies[i] = parts[0];
+                clinics[i] = parts[1];
+                hospitals[i] = parts[2];
+            }
+
+            var distributors = lines[numProvinces + 1].Split(' ').Select(int.Parse).ToArray();
+            int avgTime = int.Parse(lines[numProvinces + 2]);
+
             return new InputData
             {
-                NumOfProvinces = int.Parse(lines[0]),
-                PharmaciesPerProvince = lines[1].Split(' ').Select(int.Parse).ToArray(),
-                ClinicsPerProvince = lines[2].Split(' ').Select(int.Parse).ToArray(),
-                HospitalsPerProvince = lines[3].Split(' ').Select(int.Parse).ToArray(),
-                DistributorsPerProvince = lines[4].Split(' ').Select(int.Parse).ToArray(),
-                AvgDeliveryTime = int.Parse(lines[5])
+                NumOfProvinces = numProvinces,
+                PharmaciesPerProvince = pharmacies,
+                ClinicsPerProvince = clinics,
+                HospitalsPerProvince = hospitals,
+                DistributorsPerProvince = distributors,
+                AvgDeliveryTime = avgTime
             };
         }
     }

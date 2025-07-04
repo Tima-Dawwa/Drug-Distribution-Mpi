@@ -14,7 +14,7 @@ namespace Drug_Distribution_Mpi_Project
 
         public static void Run(Intracommunicator worldComm, InputData input)
         {
-            Console.WriteLine("Master starting coordination...");
+            //Console.WriteLine("Master starting coordination...");
 
             try
             {
@@ -54,12 +54,12 @@ namespace Drug_Distribution_Mpi_Project
                 currentRank += input.DistributorsPerProvince[i] + 1;
             }
 
-            Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
+            //Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
         }
 
         private static void SendInitialOrders(Intracommunicator worldComm, InputData input)
         {
-            Console.WriteLine("Master sending initial orders to provinces...");
+            //Console.WriteLine("Master sending initial orders to provinces...");
 
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
@@ -87,7 +87,7 @@ namespace Drug_Distribution_Mpi_Project
             int maxIterations = 1000; // Prevent infinite loops
             int currentIteration = 0;
 
-            Console.WriteLine("Master starting monitoring loop...");
+            //Console.WriteLine("Master starting monitoring loop...");
 
             while (completedProvinces < input.NumOfProvinces && currentIteration < maxIterations)
             {
@@ -113,7 +113,7 @@ namespace Drug_Distribution_Mpi_Project
                                 provinceCompletionStatus[provinceIndex] = true;
                                 completedProvinces++;
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"✅ Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
+                                Console.WriteLine($"Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
                                 Console.ResetColor();
                             }
                         }
@@ -153,7 +153,7 @@ namespace Drug_Distribution_Mpi_Project
             }
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"📊 Master received report from Province {provinceIndex}: {report.ReportType}");
+            Console.WriteLine($"Master received report from Province {provinceIndex}: {report.ReportType}");
             Console.ResetColor();
 
             try
