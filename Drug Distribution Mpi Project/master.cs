@@ -14,17 +14,25 @@ namespace Drug_Distribution_Mpi_Project
 
         public static void Run(Intracommunicator worldComm, InputData input)
         {
+            Console.WriteLine("Master starting coordination...");
 
-            // Initialize tracking structures
-            InitializeTracking(input);
+            try
+            {
+                // Initialize tracking structures
+                InitializeTracking(input);
 
-            // Send initial orders to provinces
-            SendInitialOrders(worldComm, input);
+                // Send initial orders to provinces
+                SendInitialOrders(worldComm, input);
 
-            // Main monitoring loop
-            MonitorProvinces(worldComm, input);
+                // Main monitoring loop with timeout
+                MonitorProvincesWithTimeout(worldComm, input);
 
-            Console.WriteLine("Master finished coordinating all provinces");
+                Console.WriteLine("Master finished coordinating all provinces");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Master error: {ex.Message}");
+            }
         }
 
         private static void InitializeTracking(InputData input)
@@ -45,10 +53,14 @@ namespace Drug_Distribution_Mpi_Project
 
                 currentRank += input.DistributorsPerProvince[i] + 1;
             }
+
+            Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
         }
 
         private static void SendInitialOrders(Intracommunicator worldComm, InputData input)
         {
+            Console.WriteLine("Master sending initial orders to provinces...");
+
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
                 int totalOrders = input.OrdersPerProvince[provinceIndex];
@@ -56,41 +68,77 @@ namespace Drug_Distribution_Mpi_Project
 
                 Console.WriteLine($"Master notifying Province {provinceIndex} (Leader Rank {targetRank}) about {totalOrders} orders");
 
-                // Send order count to province leader
-                worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
-                Thread.Sleep(100);
+                try
+                {
+                    // Send order count to province leader
+                    worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
+                    Thread.Sleep(50); // Small delay between sends
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Master error sending to Province {provinceIndex}: {ex.Message}");
+                }
             }
         }
 
-        private static void MonitorProvinces(Intracommunicator worldComm, InputData input)
+        private static void MonitorProvincesWithTimeout(Intracommunicator worldComm, InputData input)
         {
             int completedProvinces = 0;
+            int maxIterations = 1000; // Prevent infinite loops
+            int currentIteration = 0;
 
-            while (completedProvinces < input.NumOfProvinces)
+            Console.WriteLine("Master starting monitoring loop...");
+
+            while (completedProvinces < input.NumOfProvinces && currentIteration < maxIterations)
             {
+                currentIteration++;
+                bool foundActivity = false;
+
                 // Check for reports from province leaders
-                Status status = worldComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 10); // Tag 10 for reports
-
-                if (status != null)
+                try
                 {
-                    var report = worldComm.Receive<ProvinceReport>(status.Source, 10);
-                    ProcessProvinceReport(worldComm, report, input);
+                    Status status = worldComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 10); // Tag 10 for reports
 
-                    if (report.ReportType == ReportType.AllOrdersCompleted)
+                    if (status != null)
                     {
-                        int provinceIndex = GetProvinceIndexFromLeaderRank(report.ProvinceLeaderRank);
-                        if (!provinceCompletionStatus[provinceIndex])
+                        foundActivity = true;
+                        var report = worldComm.Receive<ProvinceReport>(status.Source, 10);
+                        ProcessProvinceReport(worldComm, report, input);
+
+                        if (report.ReportType == ReportType.AllOrdersCompleted)
                         {
-                            provinceCompletionStatus[provinceIndex] = true;
-                            completedProvinces++;
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.WriteLine($"✅ Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
-                            Console.ResetColor();
+                            int provinceIndex = GetProvinceIndexFromLeaderRank(report.ProvinceLeaderRank);
+                            if (provinceIndex >= 0 && !provinceCompletionStatus[provinceIndex])
+                            {
+                                provinceCompletionStatus[provinceIndex] = true;
+                                completedProvinces++;
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine($"✅ Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
+                                Console.ResetColor();
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Master error checking reports: {ex.Message}");
+                }
 
-                Thread.Sleep(50);
+                if (!foundActivity)
+                {
+                    Thread.Sleep(100); // Wait before next check
+                }
+
+                // Print progress every 100 iterations
+                if (currentIteration % 100 == 0)
+                {
+                    Console.WriteLine($"Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
+                }
+            }
+
+            if (currentIteration >= maxIterations)
+            {
+                Console.WriteLine($"Master reached maximum iterations ({maxIterations}). Forcing completion.");
             }
         }
 
@@ -98,23 +146,36 @@ namespace Drug_Distribution_Mpi_Project
         {
             int provinceIndex = GetProvinceIndexFromLeaderRank(report.ProvinceLeaderRank);
 
+            if (provinceIndex < 0)
+            {
+                Console.WriteLine($"Master received report from unknown province leader {report.ProvinceLeaderRank}");
+                return;
+            }
+
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"📊 Master received report from Province {provinceIndex}: {report.ReportType}");
             Console.ResetColor();
 
-            switch (report.ReportType)
+            try
             {
-                case ReportType.DistributorAvailable:
-                    HandleDistributorAvailable(report, provinceIndex);
-                    break;
+                switch (report.ReportType)
+                {
+                    case ReportType.DistributorAvailable:
+                        HandleDistributorAvailable(report, provinceIndex);
+                        break;
 
-                case ReportType.NeedMoreDistributors:
-                    HandleDistributorShortage(worldComm, report, provinceIndex, input);
-                    break;
+                    case ReportType.NeedMoreDistributors:
+                        HandleDistributorShortage(worldComm, report, provinceIndex, input);
+                        break;
 
-                case ReportType.AllOrdersCompleted:
-                    HandleProvinceCompletion(provinceIndex);
-                    break;
+                    case ReportType.AllOrdersCompleted:
+                        HandleProvinceCompletion(provinceIndex);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Master error processing report: {ex.Message}");
             }
         }
 
@@ -140,24 +201,33 @@ namespace Drug_Distribution_Mpi_Project
                     int distributorToMove = availableDistributors[sourceProvinceIndex][0];
                     availableDistributors[sourceProvinceIndex].RemoveAt(0);
 
-                    // Send reallocation command
-                    var reallocationCommand = new ReallocationCommand
+                    try
                     {
-                        TargetProvinceIndex = needyProvinceIndex,
-                        TargetProvinceLeaderRank = provinceLeaderRanks[needyProvinceIndex],
-                        SourceProvinceIndex = sourceProvinceIndex
-                    };
+                        // Send reallocation command
+                        var reallocationCommand = new ReallocationCommand
+                        {
+                            TargetProvinceIndex = needyProvinceIndex,
+                            TargetProvinceLeaderRank = provinceLeaderRanks[needyProvinceIndex],
+                            SourceProvinceIndex = sourceProvinceIndex
+                        };
 
-                    worldComm.Send(reallocationCommand, distributorToMove, 11); // Tag 11 for reallocation
+                        worldComm.Send(reallocationCommand, distributorToMove, 11); // Tag 11 for reallocation
 
-                    Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine($"🔄 Master reallocating Distributor {distributorToMove} from Province {sourceProvinceIndex} to Province {needyProvinceIndex}");
-                    Console.ResetColor();
+                        Console.ForegroundColor = ConsoleColor.Magenta;
+                        Console.WriteLine($"🔄 Master reallocating Distributor {distributorToMove} from Province {sourceProvinceIndex} to Province {needyProvinceIndex}");
+                        Console.ResetColor();
 
-                    // Notify target province about incoming help
-                    worldComm.Send(distributorToMove, provinceLeaderRanks[needyProvinceIndex], 12); // Tag 12 for incoming distributor
+                        // Notify target province about incoming help
+                        worldComm.Send(distributorToMove, provinceLeaderRanks[needyProvinceIndex], 12); // Tag 12 for incoming distributor
 
-                    return;
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Master error reallocating distributor: {ex.Message}");
+                        // Put distributor back in available list
+                        availableDistributors[sourceProvinceIndex].Add(distributorToMove);
+                    }
                 }
             }
 
@@ -173,12 +243,8 @@ namespace Drug_Distribution_Mpi_Project
 
         private static int GetProvinceIndexFromLeaderRank(int leaderRank)
         {
-            return provinceLeaderRanks.FirstOrDefault(x => x.Value == leaderRank).Key;
-        }
-
-        private static int GetProvinceLeaderRank(int provinceIndex, InputData input)
-        {
-            return provinceLeaderRanks[provinceIndex];
+            var kvp = provinceLeaderRanks.FirstOrDefault(x => x.Value == leaderRank);
+            return kvp.Key == 0 && kvp.Value == 0 ? -1 : kvp.Key;
         }
     }
 
