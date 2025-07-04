@@ -191,7 +191,7 @@ namespace Drug_Distribution_Mpi_Project
         }
     }
 
-  
+    [Serializable]
     public class ProvinceReport
     {
         public int ProvinceLeaderRank { get; set; }
@@ -201,6 +201,7 @@ namespace Drug_Distribution_Mpi_Project
         public int ActiveDistributors { get; set; }
     }
 
+    [Serializable]
     public class ReallocationCommand
     {
         public int TargetProvinceIndex { get; set; }
@@ -208,6 +209,7 @@ namespace Drug_Distribution_Mpi_Project
         public int SourceProvinceIndex { get; set; }
     }
 
+    [Serializable]
     public enum ReportType
     {
         DistributorAvailable,
