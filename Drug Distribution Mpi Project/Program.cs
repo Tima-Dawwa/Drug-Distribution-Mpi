@@ -79,7 +79,7 @@ namespace Drug_Distribution_Mpi_Project
                         comm.Send(input, i, 0);
                     }
 
-                    Console.WriteLine("Master Process (Rank 0) starting coordination...\n");
+                    //Console.WriteLine("Master Process (Rank 0) starting coordination...\n");
                     Master.Run(comm, input);
 
                     Console.ForegroundColor = ConsoleColor.Green;
