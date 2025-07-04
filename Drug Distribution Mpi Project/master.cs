@@ -10,7 +10,7 @@ namespace Drug_Distribution_Mpi_Project
         {
             Console.WriteLine(" Starting a parallel drug distribution system using MPI...");
 
-            InputData input = Input.Read();
+            InputData input = Input.GetInput();
 
             for (int i = 1; i < size; i++)
             {
@@ -35,7 +35,7 @@ namespace Drug_Distribution_Mpi_Project
 
         private static int GetProvinceLeaderRank(int provinceIndex, InputData input)
         {
-            return 1 + provinceIndex * (input.DistributorsPerProvince + 1);
+            return 1 + provinceIndex * (input.DistributorsPerProvince[provinceIndex] + 1);
         }
     }
 }
