@@ -19,12 +19,7 @@ namespace Drug_Distribution_Mpi_Project
                 if (rank == 0)
                 {
                     Console.WriteLine(" Starting a parallel drug distribution system using MPI...");
-                    input = Input.Read();
-
-                    for (int i = 1; i < size; i++)
-                    {
-                        comm.Send(input, i, 0);
-                    }
+                    Master.Run(comm, size);
 
                     Console.WriteLine("Master is ready (Rank 0)");
                 }
