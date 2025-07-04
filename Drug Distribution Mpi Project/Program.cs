@@ -26,7 +26,7 @@ namespace Drug_Distribution_Mpi_Project
                         comm.Send(input, i, 0);
                     }
 
-                    Console.WriteLine("🧠 Master is ready (Rank 0)");
+                    Console.WriteLine("Master is ready (Rank 0)");
                 }
                 else
                 {
