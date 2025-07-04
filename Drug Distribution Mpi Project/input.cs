@@ -7,7 +7,22 @@ namespace Drug_Distribution_Mpi_Project
     {
         public int NumOfProvinces { get; set; }
         public int[] PharmaciesPerProvince { get; set; }
+        public int[] ClinicsPerProvince { get; set; }
+        public int[] HospitalsPerProvince { get; set; }
         public int[] DistributorsPerProvince { get; set; }
+        public int AvgDeliveryTime { get; set; }
+        public int[] OrdersPerProvince
+        {
+            get
+            {
+                int[] orders = new int[NumOfProvinces];
+                for (int i = 0; i < NumOfProvinces; i++)
+                {
+                    orders[i] = PharmaciesPerProvince[i] + ClinicsPerProvince[i] + HospitalsPerProvince[i];
+                }
+                return orders;
+            }
+        }
     }
 
     public static class Input
@@ -27,8 +42,23 @@ namespace Drug_Distribution_Mpi_Project
             Console.ResetColor();
 
             Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("Enter the number of clinics for each province (with spaces between them): ");
+            data.ClinicsPerProvince = ReadIntArray(data.NumOfProvinces);
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("Enter the number of hospitals for each province (with spaces between them): ");
+            data.HospitalsPerProvince = ReadIntArray(data.NumOfProvinces);
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
             Console.Write("Enter the number of distributors for each province (with spaces between them): ");
             data.DistributorsPerProvince = ReadIntArray(data.NumOfProvinces);
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("Enter the median time to distribute a single order: ");
+            data.AvgDeliveryTime = ReadPositiveInt();
             Console.ResetColor();
 
             return data;

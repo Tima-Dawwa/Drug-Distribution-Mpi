@@ -18,7 +18,7 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (task == null)
                 {
-                    Console.WriteLine($"[Distributor Rank {rank}] No more tasks, Exiting..");
+                    Console.WriteLine($"[Distributor Rank {rank}] No more tasks\nExiting.");
                     break;  
                 }
 
