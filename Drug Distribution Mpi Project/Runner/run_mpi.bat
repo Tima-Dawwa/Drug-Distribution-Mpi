@@ -2,7 +2,7 @@
 cd /d %~dp0
 
 echo.
-echo Running drug distribution project using MPI...
+echo Starting drug distribution project using MPI...
 echo.
 
 REM ✅ Check if process_count.txt exists
