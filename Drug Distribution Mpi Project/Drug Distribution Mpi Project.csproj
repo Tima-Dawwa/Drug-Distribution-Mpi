@@ -46,18 +46,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="distributor.cs" />
-    <Compile Include="input.cs" />
-    <Compile Include="master.cs" />
-    <Compile Include="mpi_helpers.cs" />
+    <Compile Include="Distributer.cs" />
+    <Compile Include="Input.cs" />
+    <Compile Include="Master.cs" />
+    <Compile Include="MpiHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="provienc.cs" />
-    <Compile Include="simulate.cs" />
-    <Compile Include="utils.cs" />
+    <Compile Include="Provienc.cs" />
+    <Compile Include="RoleAssigner.cs" />
+    <Compile Include="Simulate.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <Compile Include="Helper\RoleAssignHelper.cs" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
