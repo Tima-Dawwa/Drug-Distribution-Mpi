@@ -1,10 +1,7 @@
 ﻿using MPI;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Drug_Distribution_Mpi_Project
 {
@@ -15,8 +12,8 @@ namespace Drug_Distribution_Mpi_Project
             int rank = provinceComm.Rank;
             int size = provinceComm.Size;
 
-            int numDistributors = input.DistributorsPerProvince;
-            int totalOrders = input.OrdersPerProvince[provinceIndex]; 
+            int numDistributors = input.DistributorsPerProvince[provinceIndex];
+            int totalOrders = input.PharmaciesPerProvince[provinceIndex]; 
 
             Queue<int> distributorQueue = new Queue<int>();
             bool[] distributorStatus = new bool[numDistributors]; //busy distributors = true , available distributors = false
