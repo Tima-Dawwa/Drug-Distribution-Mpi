@@ -19,8 +19,6 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (rank == 0)
                 {
-                    Console.WriteLine("Starting parallel drug distribution system using MPI...");
-
                     string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
                     string runnerFolder = Path.Combine(projectRoot, "Runner");
                     string inputFile = Path.Combine(runnerFolder, "input_data.txt");
@@ -28,11 +26,9 @@ namespace Drug_Distribution_Mpi_Project
                     if (File.Exists(inputFile))
                     {
                         input = Input.LoadFromTextFile();
-                        Console.WriteLine("Loaded input from input_data.txt");
                         try
                         {
                             File.Delete(inputFile);
-                            Console.WriteLine($"Deleted input file");
                         }
                         catch (Exception ex)
                         {
@@ -43,7 +39,6 @@ namespace Drug_Distribution_Mpi_Project
                     {
                         input = Input.GetInput();
                         Input.SaveToTextFile(input);
-                        Console.WriteLine("Input collected interactively and saved");
                     }
 
                     for (int i = 1; i < size; i++)
