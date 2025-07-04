@@ -2,6 +2,7 @@
 using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Drug_Distribution_Mpi_Project
 {
@@ -18,46 +19,47 @@ namespace Drug_Distribution_Mpi_Project
 
             Queue<int> distributorQueue = new Queue<int>();
             Dictionary<int, bool> distributorStatus = new Dictionary<int, bool>();
-            HashSet<int> externalDistributors = new HashSet<int>(); // Track distributors from other provinces
+            HashSet<int> externalDistributors = new HashSet<int>();
 
             // Initialize local distributors
             for (int i = 1; i < size; i++)
             {
                 distributorQueue.Enqueue(i);
-                distributorStatus[i] = false; // false = available, true = busy
+                distributorStatus[i] = false;
             }
 
             Console.WriteLine($"[Province {provinceIndex} | Rank {rank}] Leader started, waiting for orders...");
 
             // Wait for order count from Master
-            totalOrders = worldComm.Receive<int>(0, 2); // Tag 2 for order count
+            totalOrders = worldComm.Receive<int>(0, 2);
             Console.WriteLine($"[Province {provinceIndex}] Received {totalOrders} orders to distribute");
 
             int nextOrderId = 1;
             int finishedOrders = 0;
             int lastReportedDistributorCount = distributorQueue.Count;
 
+            // Send initial orders to all available distributors
+            AssignInitialOrders(provinceComm, distributorQueue, distributorStatus, ref nextOrderId, totalOrders, provinceIndex);
+
             while (finishedOrders < totalOrders)
             {
                 // Check for incoming external distributors
                 CheckForIncomingDistributors(worldComm, distributorQueue, distributorStatus, externalDistributors);
 
-                // Assign orders to available distributors
+                // Assign orders to newly available distributors
                 AssignOrdersToDistributors(provinceComm, distributorQueue, distributorStatus, ref nextOrderId, totalOrders, provinceIndex);
 
-                // Check for completed orders
+                // Check for completed orders (both local and external)
                 finishedOrders += ProcessCompletedOrders(provinceComm, distributorQueue, distributorStatus, worldComm, provinceIndex, externalDistributors);
 
                 // Check if we need more distributors
                 CheckAndRequestMoreDistributors(worldComm, distributorQueue, distributorStatus, totalOrders, finishedOrders, provinceIndex, ref lastReportedDistributorCount);
 
-                Thread.Sleep(10);
+                Thread.Sleep(50); // Increased sleep to reduce CPU usage
             }
 
-            // Send termination signals to local distributors
+            // Send termination signals
             SendTerminationSignals(provinceComm, size, distributorStatus, externalDistributors);
-
-            // Send external distributors back to their provinces
             SendExternalDistributorsBack(worldComm, externalDistributors);
 
             // Report completion to Master
@@ -68,10 +70,27 @@ namespace Drug_Distribution_Mpi_Project
             Console.ResetColor();
         }
 
+        private static void AssignInitialOrders(Intracommunicator provinceComm, Queue<int> distributorQueue,
+            Dictionary<int, bool> distributorStatus, ref int nextOrderId, int totalOrders, int provinceIndex)
+        {
+            Console.WriteLine($"[Province {provinceIndex}] Assigning initial orders...");
+
+            // Assign orders to all initially available distributors
+            while (distributorQueue.Count > 0 && nextOrderId <= totalOrders)
+            {
+                int distributor = distributorQueue.Dequeue();
+                distributorStatus[distributor] = true;
+
+                provinceComm.Send(nextOrderId, distributor, 0);
+                Console.WriteLine($"[Province {provinceIndex}] Sent initial Order {nextOrderId} to Distributor {distributor}");
+                nextOrderId++;
+            }
+        }
+
         private static void CheckForIncomingDistributors(Intracommunicator worldComm, Queue<int> distributorQueue,
             Dictionary<int, bool> distributorStatus, HashSet<int> externalDistributors)
         {
-            Status status = worldComm.ImmediateProbe(0, 12); // Tag 12 for incoming distributors
+            Status status = worldComm.ImmediateProbe(0, 12);
             if (status != null)
             {
                 int incomingDistributorRank = worldComm.Receive<int>(0, 12);
@@ -113,36 +132,45 @@ namespace Drug_Distribution_Mpi_Project
         {
             int completedOrders = 0;
 
-            // Check local distributors
-            Status localStatus = provinceComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 1);
-            if (localStatus != null)
+            // Check local distributors first
+            while (true)
             {
+                Status localStatus = provinceComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 1);
+                if (localStatus == null) break;
+
                 int finishedDistributor = localStatus.Source;
                 int completedOrderId = provinceComm.Receive<int>(finishedDistributor, 1);
 
-                distributorStatus[finishedDistributor] = false;
-                distributorQueue.Enqueue(finishedDistributor);
-                completedOrders++;
-
-                Console.WriteLine($"[Province {provinceIndex}] Local Distributor {finishedDistributor} completed order {completedOrderId}");
-
-                // Report available distributor to Master
-                ReportDistributorAvailable(worldComm, finishedDistributor, provinceIndex);
-            }
-
-            // Check external distributors
-            foreach (int externalDistributor in externalDistributors)
-            {
-                Status externalStatus = worldComm.ImmediateProbe(externalDistributor, 1);
-                if (externalStatus != null)
+                if (distributorStatus.ContainsKey(finishedDistributor))
                 {
-                    int completedOrderId = worldComm.Receive<int>(externalDistributor, 1);
-
-                    distributorStatus[externalDistributor] = false;
-                    distributorQueue.Enqueue(externalDistributor);
+                    distributorStatus[finishedDistributor] = false;
+                    distributorQueue.Enqueue(finishedDistributor);
                     completedOrders++;
 
-                    Console.WriteLine($"[Province {provinceIndex}] External Distributor {externalDistributor} completed order {completedOrderId}");
+                    Console.WriteLine($"[Province {provinceIndex}] Local Distributor {finishedDistributor} completed order {completedOrderId}");
+                    ReportDistributorAvailable(worldComm, finishedDistributor, provinceIndex);
+                }
+            }
+
+            // Check external distributors - use ANY_SOURCE to avoid blocking
+            while (true)
+            {
+                Status externalStatus = worldComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 1);
+                if (externalStatus == null) break;
+
+                // Only process if it's from an external distributor we're tracking
+                if (externalDistributors.Contains(externalStatus.Source))
+                {
+                    int completedOrderId = worldComm.Receive<int>(externalStatus.Source, 1);
+
+                    if (distributorStatus.ContainsKey(externalStatus.Source))
+                    {
+                        distributorStatus[externalStatus.Source] = false;
+                        distributorQueue.Enqueue(externalStatus.Source);
+                        completedOrders++;
+
+                        Console.WriteLine($"[Province {provinceIndex}] External Distributor {externalStatus.Source} completed order {completedOrderId}");
+                    }
                 }
             }
 
@@ -156,7 +184,7 @@ namespace Drug_Distribution_Mpi_Project
             int remainingOrders = totalOrders - finishedOrders;
 
             // Request help if we have many orders remaining but few available distributors
-            if (remainingOrders > 5 && availableDistributors < 2 && availableDistributors < lastReportedDistributorCount)
+            if (remainingOrders > 3 && availableDistributors == 0 && lastReportedDistributorCount != availableDistributors)
             {
                 RequestMoreDistributors(worldComm, remainingOrders, availableDistributors, provinceIndex);
                 lastReportedDistributorCount = availableDistributors;
@@ -166,21 +194,38 @@ namespace Drug_Distribution_Mpi_Project
         private static void SendTerminationSignals(Intracommunicator provinceComm, int size,
             Dictionary<int, bool> distributorStatus, HashSet<int> externalDistributors)
         {
+            Console.WriteLine($"[Province] Sending termination signals to local distributors...");
             for (int i = 1; i < size; i++)
             {
                 if (!externalDistributors.Contains(i))
                 {
-                    provinceComm.Send(-1, i, 0);
+                    try
+                    {
+                        provinceComm.Send(-1, i, 0);
+                        Console.WriteLine($"[Province] Sent termination to local distributor {i}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Province] Error sending termination to distributor {i}: {ex.Message}");
+                    }
                 }
             }
         }
 
         private static void SendExternalDistributorsBack(Intracommunicator worldComm, HashSet<int> externalDistributors)
         {
+            Console.WriteLine($"[Province] Sending {externalDistributors.Count} external distributors back...");
             foreach (int externalDistributor in externalDistributors)
             {
-                worldComm.Send(-1, externalDistributor, 0); // Send termination signal
-                Console.WriteLine($"[Province] Sent external distributor {externalDistributor} back to their province");
+                try
+                {
+                    worldComm.Send(-1, externalDistributor, 0);
+                    Console.WriteLine($"[Province] Sent external distributor {externalDistributor} back to their province");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Province] Error sending back external distributor {externalDistributor}: {ex.Message}");
+                }
             }
         }
 
@@ -193,7 +238,8 @@ namespace Drug_Distribution_Mpi_Project
                 RemainingOrders = 0
             };
 
-            worldComm.Send(report, 0, 10); // Tag 10 for reports
+            worldComm.Send(report, 0, 10);
+            Console.WriteLine($"[Province] Sent completion report to Master");
         }
 
         private static void ReportDistributorAvailable(Intracommunicator worldComm, int distributorRank, int provinceIndex)
@@ -205,7 +251,7 @@ namespace Drug_Distribution_Mpi_Project
                 DistributorRank = distributorRank
             };
 
-            worldComm.Send(report, 0, 10); // Tag 10 for reports
+            worldComm.Send(report, 0, 10);
         }
 
         private static void RequestMoreDistributors(Intracommunicator worldComm, int remainingOrders, int availableDistributors, int provinceIndex)
@@ -218,7 +264,7 @@ namespace Drug_Distribution_Mpi_Project
                 ActiveDistributors = availableDistributors
             };
 
-            worldComm.Send(report, 0, 10); // Tag 10 for reports
+            worldComm.Send(report, 0, 10);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"[Province {provinceIndex}] Requesting help: {remainingOrders} orders remaining, {availableDistributors} distributors available");
