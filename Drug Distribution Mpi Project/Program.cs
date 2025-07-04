@@ -1,9 +1,5 @@
 ﻿using MPI;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Drug_Distribution_Mpi_Project
 {
@@ -14,12 +10,22 @@ namespace Drug_Distribution_Mpi_Project
             using (new MPI.Environment(ref args))
             {
                 Intracommunicator comm = Communicator.world;
+                InputData input;
                 int rank = comm.Rank;
                 int size = comm.Size;
 
                 if (rank == 0)
                 {
-                    Console.WriteLine("started");
+                    Console.WriteLine("🚀 Starting a parallel drug distribution system using MPI...");
+                    input = Input.Read();
+                    for (int i = 1; i < size; i++)
+                    {
+                        comm.Send(input, i, 0);
+                    }
+                }
+                else
+                {
+                    _ = comm.Receive<InputData>(0, 0);
                 }
             }
         }

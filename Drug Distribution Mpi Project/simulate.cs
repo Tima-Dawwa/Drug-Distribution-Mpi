@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MPI;
+using System;
 
 namespace Drug_Distribution_Mpi_Project
 {
-    class simulate
+    public static class Simulation
     {
-
+        
     }
 }
