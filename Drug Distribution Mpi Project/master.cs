@@ -12,20 +12,11 @@ namespace Drug_Distribution_Mpi_Project
         private static Dictionary<int, int> provinceLeaderRanks = new Dictionary<int, int>();
         private static Dictionary<int, bool> provinceCompletionStatus = new Dictionary<int, bool>();
 
-        public static void Run(Intracommunicator worldComm, int size)
+        public static void Run(Intracommunicator worldComm, InputData input)
         {
-            InputData input = Input.GetInput();
 
             // Initialize tracking structures
             InitializeTracking(input);
-
-            // Send input to all ranks
-            for (int i = 1; i < size; i++)
-            {
-                worldComm.Send(input, i, 0);
-            }
-
-            Console.WriteLine("Master has distributed input to all ranks");
 
             // Send initial orders to provinces
             SendInitialOrders(worldComm, input);
