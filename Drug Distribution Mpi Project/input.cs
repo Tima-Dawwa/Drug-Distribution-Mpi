@@ -8,7 +8,6 @@ namespace Drug_Distribution_Mpi_Project
         public int NumOfProvinces { get; set; }
         public int[] PharmaciesPerProvince { get; set; }
         public int[] DistributorsPerProvince { get; set; }
-        public int AvgDeliveryTime { get; set; }
     }
 
     public static class Input
@@ -18,7 +17,7 @@ namespace Drug_Distribution_Mpi_Project
             var data = new InputData();
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.Write("Enter the number of provinces:");
+            Console.Write("Enter the number of provinces: ");
             data.NumOfProvinces = ReadPositiveInt();
             Console.ResetColor();
 
@@ -32,11 +31,6 @@ namespace Drug_Distribution_Mpi_Project
             data.DistributorsPerProvince = ReadIntArray(data.NumOfProvinces);
             Console.ResetColor();
 
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.Write("Enter the median time to distribute a single order: ");
-            data.AvgDeliveryTime = ReadPositiveInt();
-            Console.ResetColor();
-
             return data;
         }
 
@@ -48,7 +42,7 @@ namespace Drug_Distribution_Mpi_Project
                 if (int.TryParse(input, out int value) && value > 0)
                     return value;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("Please enter a positive number. \n Try again: ");
+                Console.Write("Please enter a positive number.\nTry again: ");
                 Console.ResetColor();
             }
         }
@@ -66,7 +60,7 @@ namespace Drug_Distribution_Mpi_Project
                     if (numbers.Length != expectedLength)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"You have to enter exactly {expectedLength} number.\n Try again: ");
+                        Console.WriteLine($"You have to enter exactly {expectedLength} numbers.\nTry again: ");
                         Console.ResetColor();
                         continue;
                     }
@@ -74,7 +68,7 @@ namespace Drug_Distribution_Mpi_Project
                     if (numbers.Any(n => n < 0))
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("All numbers must be positive or zero.\n Try again: ");
+                        Console.WriteLine("All numbers must be positive or zero.\nTry again: ");
                         Console.ResetColor();
                         continue;
                     }
