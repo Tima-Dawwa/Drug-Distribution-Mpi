@@ -49,12 +49,10 @@
     <Compile Include="Distributer.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="Master.cs" />
-    <Compile Include="MpiHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Provienc.cs" />
     <Compile Include="RoleAssigner.cs" />
-    <Compile Include="Simulate.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
