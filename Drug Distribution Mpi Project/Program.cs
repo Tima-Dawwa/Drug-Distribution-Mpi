@@ -29,16 +29,15 @@ namespace Drug_Distribution_Mpi_Project
                     if (File.Exists(inputFile))
                     {
                         input = Input.LoadFromTextFile();
-                        Console.WriteLine("✅ Loaded input from input_data.txt");
-                        try
-                        {
-                            File.Delete(inputFile);
-                            Console.WriteLine("✅ Deleted input file");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"⚠️ Could not delete {inputFile}: {ex.Message}");
-                        }
+                        // تيما لا تمسحي هاد الكومنت
+                        //try
+                        //{
+                        //    File.Delete(inputFile);
+                        //}
+                        //catch (Exception ex)
+                        //{
+                        //    Console.WriteLine($"could not delete {inputFile}: {ex.Message}");
+                        //}
                     }
                     else
                     {
@@ -74,17 +73,17 @@ namespace Drug_Distribution_Mpi_Project
                     RoleAssignHelper.PrintRankAssignments(input);
 
                     // Send input to all other processes
-                    Console.WriteLine("📤 Sending input data to all processes...");
+                    Console.WriteLine("Sending input data to all processes...");
                     for (int i = 1; i < size; i++)
                     {
                         comm.Send(input, i, 0);
                     }
 
-                    Console.WriteLine("🎯 Master Process (Rank 0) starting coordination...\n");
+                    Console.WriteLine("Master Process (Rank 0) starting coordination...\n");
                     Master.Run(comm, input);
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("\n🏁 MASTER PROCESS COMPLETED SUCCESSFULLY!");
+                    Console.WriteLine("\nMASTER PROCESS COMPLETED SUCCESSFULLY!");
                     Console.ResetColor();
                 }
                 else
