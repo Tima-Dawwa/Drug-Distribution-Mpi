@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 
 namespace Drug_Distribution_Mpi_Project
@@ -12,16 +13,19 @@ namespace Drug_Distribution_Mpi_Project
         public int[] HospitalsPerProvince { get; set; }
         public int[] DistributorsPerProvince { get; set; }
         public int AvgDeliveryTime { get; set; }
+        [NonSerialized]
+        private int[] _ordersCache;
         public int[] OrdersPerProvince
         {
             get
             {
-                int[] orders = new int[NumOfProvinces];
-                for (int i = 0; i < NumOfProvinces; i++)
+                if (_ordersCache == null)
                 {
-                    orders[i] = PharmaciesPerProvince[i] + ClinicsPerProvince[i] + HospitalsPerProvince[i];
+                    _ordersCache = new int[NumOfProvinces];
+                    for (int i = 0; i < NumOfProvinces; i++)
+                        _ordersCache[i] = PharmaciesPerProvince[i] + ClinicsPerProvince[i] + HospitalsPerProvince[i];
                 }
-                return orders;
+                return _ordersCache;
             }
         }
     }
@@ -62,6 +66,18 @@ namespace Drug_Distribution_Mpi_Project
             data.AvgDeliveryTime = ReadPositiveInt();
             Console.ResetColor();
 
+            int totalProcesses = 1;
+            for (int i = 0; i < data.NumOfProvinces; i++)
+            {
+                totalProcesses += 1 + data.DistributorsPerProvince[i];
+            }
+            string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
+            string runnerFolder = Path.Combine(projectRoot, "Runner");
+            string processFile = Path.Combine(runnerFolder, "process_count.txt");
+
+            File.WriteAllText(processFile, totalProcesses.ToString());
+
+            Console.WriteLine($"Processes: {totalProcesses} in: {processFile}");
             return data;
         }
 
@@ -113,6 +129,43 @@ namespace Drug_Distribution_Mpi_Project
                     Console.ResetColor();
                 }
             }
+        }
+
+        public static void SaveToTextFile(InputData data, string path = "input_data.txt")
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
+            string runnerFolder = Path.Combine(projectRoot, "Runner");
+            string inputFile = Path.Combine(runnerFolder, path);
+
+            using (StreamWriter writer = new StreamWriter(inputFile))
+            {
+                writer.WriteLine(data.NumOfProvinces);
+                writer.WriteLine(string.Join(" ", data.PharmaciesPerProvince));
+                writer.WriteLine(string.Join(" ", data.ClinicsPerProvince));
+                writer.WriteLine(string.Join(" ", data.HospitalsPerProvince));
+                writer.WriteLine(string.Join(" ", data.DistributorsPerProvince));
+                writer.WriteLine(data.AvgDeliveryTime);
+            }
+        }
+
+        public static InputData LoadFromTextFile(string path = "input_data.txt")
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
+
+            string runnerFolder = Path.Combine(projectRoot, "Runner");
+
+            string inputFile = Path.Combine(runnerFolder, path);
+
+            var lines = File.ReadAllLines(inputFile);
+            return new InputData
+            {
+                NumOfProvinces = int.Parse(lines[0]),
+                PharmaciesPerProvince = lines[1].Split(' ').Select(int.Parse).ToArray(),
+                ClinicsPerProvince = lines[2].Split(' ').Select(int.Parse).ToArray(),
+                HospitalsPerProvince = lines[3].Split(' ').Select(int.Parse).ToArray(),
+                DistributorsPerProvince = lines[4].Split(' ').Select(int.Parse).ToArray(),
+                AvgDeliveryTime = int.Parse(lines[5])
+            };
         }
     }
 }

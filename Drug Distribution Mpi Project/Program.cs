@@ -1,7 +1,7 @@
 ﻿using Drug_Distribution_Mpi_Project.Helper;
 using MPI;
 using System;
-
+using System.IO;
 
 namespace Drug_Distribution_Mpi_Project
 {
@@ -15,12 +15,43 @@ namespace Drug_Distribution_Mpi_Project
                 int rank = comm.Rank;
                 int size = comm.Size;
                 InputData input;
+                string inputPath = Path.Combine("Runner", "input_data.txt");
 
                 if (rank == 0)
                 {
-                    Console.WriteLine("Starting a parallel drug distribution system using MPI...");
+                    Console.WriteLine("Starting parallel drug distribution system using MPI...");
 
-                    Master.Run(comm, size);
+                    string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
+                    string runnerFolder = Path.Combine(projectRoot, "Runner");
+                    string inputFile = Path.Combine(runnerFolder, "input_data.txt");
+
+                    if (File.Exists(inputFile))
+                    {
+                        input = Input.LoadFromTextFile();
+                        Console.WriteLine("Loaded input from input_data.txt");
+                        try
+                        {
+                            File.Delete(inputFile);
+                            Console.WriteLine($"Deleted input file");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"could not delete {inputFile}: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        input = Input.GetInput();
+                        Input.SaveToTextFile(input);
+                        Console.WriteLine("Input collected interactively and saved");
+                    }
+
+                    for (int i = 1; i < size; i++)
+                    {
+                        comm.Send(input, i, 0);
+                    }
+
+                    Master.Run(comm, input);
 
                     Console.WriteLine("Master is ready (Rank 0)");
                 }
