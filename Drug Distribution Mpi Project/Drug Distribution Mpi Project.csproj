@@ -52,7 +52,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Province.cs" />
-    <Compile Include="RoleAssigner.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>

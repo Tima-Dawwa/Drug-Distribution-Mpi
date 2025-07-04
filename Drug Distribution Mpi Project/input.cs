@@ -3,6 +3,7 @@ using System.Linq;
 
 namespace Drug_Distribution_Mpi_Project
 {
+    [Serializable]
     public class InputData
     {
         public int NumOfProvinces { get; set; }
