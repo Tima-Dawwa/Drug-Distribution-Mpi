@@ -8,8 +8,6 @@ namespace Drug_Distribution_Mpi_Project
     {
         public static void Run(Intracommunicator worldComm, int size)
         {
-            Console.WriteLine(" Starting a parallel drug distribution system using MPI...");
-
             InputData input = Input.GetInput();
 
             for (int i = 1; i < size; i++)
