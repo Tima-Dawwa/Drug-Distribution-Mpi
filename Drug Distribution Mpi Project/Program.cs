@@ -1,4 +1,4 @@
-﻿using Drug_Distribution_Mpi_Project.Helper;
+using Drug_Distribution_Mpi_Project.Helper;
 using MPI;
 using System;
 using System.IO;
