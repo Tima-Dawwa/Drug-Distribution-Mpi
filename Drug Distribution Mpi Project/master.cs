@@ -15,20 +15,23 @@ namespace Drug_Distribution_Mpi_Project
                 worldComm.Send(input, i, 0);
             }
 
-            Console.WriteLine(" Master has distributed input to all ranks.");
+            Console.WriteLine("Master has distributed input to all ranks");
 
-            int totalOrders = 10;
-            for (int i = 0; i < totalOrders; i++)
+            for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
-                int provinceIndex = i % input.NumOfProvinces;
-                int targetRank = GetProvinceLeaderRank(provinceIndex, input);
+                int totalOrders = input.OrdersPerProvince[provinceIndex];
 
-                Console.WriteLine($" Master sending order {i} to Province {provinceIndex} (Leader Rank {targetRank})");
-                worldComm.Send(i, targetRank, 1); 
-                Thread.Sleep(500); 
+                for (int j = 0; j < totalOrders; j++)
+                {
+                    int targetRank = GetProvinceLeaderRank(provinceIndex, input);
+
+                    Console.WriteLine($"Master sending order {j} to Province {provinceIndex} (Leader Rank {targetRank})");
+                    worldComm.Send(j, targetRank, 1);
+                    Thread.Sleep(500);
+                }
             }
 
-            Console.WriteLine(" Master finished sending orders.");
+            Console.WriteLine("Master finished sending orders");
         }
 
         private static int GetProvinceLeaderRank(int provinceIndex, InputData input)

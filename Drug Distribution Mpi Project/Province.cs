@@ -13,7 +13,7 @@ namespace Drug_Distribution_Mpi_Project
             int size = provinceComm.Size;
 
             int numDistributors = input.DistributorsPerProvince[provinceIndex];
-            int totalOrders = input.PharmaciesPerProvince[provinceIndex]; 
+            int totalOrders = input.OrdersPerProvince[provinceIndex]; 
 
             Queue<int> distributorQueue = new Queue<int>();
             bool[] distributorStatus = new bool[numDistributors]; //busy distributors = true , available distributors = false
