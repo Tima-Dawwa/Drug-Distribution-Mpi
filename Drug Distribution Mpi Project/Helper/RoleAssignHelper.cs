@@ -24,7 +24,6 @@ namespace Drug_Distribution_Mpi_Project.Helper
             Console.WriteLine($"[Rank {rank}] → Assigned to Province {provinceIndex}");
             Console.ResetColor();
 
-            // Create province communicator
             Intracommunicator provinceComm = (Intracommunicator)worldComm.Split(provinceIndex, rank);
 
             int localRank = provinceComm.Rank;
@@ -46,14 +45,13 @@ namespace Drug_Distribution_Mpi_Project.Helper
 
         static int GetProvinceIndex(int rank, InputData input)
         {
-            // Rank 0 is Master, so skip it
             if (rank == 0) return -1;
 
-            int currentRank = 1; // Start after Master (rank 0)
+            int currentRank = 1; 
 
             for (int i = 0; i < input.NumOfProvinces; i++)
             {
-                int provinceSize = 1 + input.DistributorsPerProvince[i]; // 1 leader + distributors
+                int provinceSize = 1 + input.DistributorsPerProvince[i]; 
 
                 if (rank >= currentRank && rank < currentRank + provinceSize)
                 {
@@ -63,14 +61,12 @@ namespace Drug_Distribution_Mpi_Project.Helper
                 currentRank += provinceSize;
             }
 
-            // If we reach here, the rank doesn't belong to any province
             return -1;
         }
 
-        // Helper method to get province leader rank from province index
         public static int GetProvinceLeaderRank(int provinceIndex, InputData input)
         {
-            int currentRank = 1; // Start after Master
+            int currentRank = 1; 
 
             for (int i = 0; i < provinceIndex; i++)
             {
@@ -80,20 +76,18 @@ namespace Drug_Distribution_Mpi_Project.Helper
             return currentRank;
         }
 
-        // Helper method to validate total ranks needed
         public static int GetTotalRanksNeeded(InputData input)
         {
-            int totalRanks = 1; // Master rank
+            int totalRanks = 1; 
 
             for (int i = 0; i < input.NumOfProvinces; i++)
             {
-                totalRanks += 1 + input.DistributorsPerProvince[i]; // 1 leader + distributors
+                totalRanks += 1 + input.DistributorsPerProvince[i]; 
             }
 
             return totalRanks;
         }
 
-        // Helper method to print the rank assignment structure
         public static void PrintRankAssignments(InputData input)
         {
             Console.WriteLine("\n=== RANK ASSIGNMENT STRUCTURE ===");

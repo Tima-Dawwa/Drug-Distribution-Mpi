@@ -24,7 +24,6 @@ namespace Drug_Distribution_Mpi_Project
                     _ordersCache = new int[NumOfProvinces];
                     for (int i = 0; i < NumOfProvinces; i++)
                     {
-                        //Console.WriteLine($"PharmaciesPerProvince: {PharmaciesPerProvince[i]} , ClinicsPerProvince: {ClinicsPerProvince[i]} , HospitalsPerProvince: { HospitalsPerProvince[i]}");
                         _ordersCache[i] = PharmaciesPerProvince[i] + ClinicsPerProvince[i] + HospitalsPerProvince[i];
                     }
                 }

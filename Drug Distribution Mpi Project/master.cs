@@ -20,16 +20,12 @@ namespace Drug_Distribution_Mpi_Project
 
             try
             {
-                // Initialize tracking structures
                 InitializeTracking(input);
 
-                // Send initial orders to provinces with confirmation
                 SendInitialOrdersWithConfirmation(worldComm, input);
 
-                // Main monitoring loop with timeout
                 MonitorProvincesWithTimeout(worldComm, input);
 
-                // Send termination signals to all processes
                 SendTerminationSignals(worldComm, input);
 
                 Console.WriteLine("\nMaster finished coordinating all provinces √");
@@ -53,7 +49,6 @@ namespace Drug_Distribution_Mpi_Project
                 provinceCompletedOrders[i] = 0;
                 availableDistributors[i] = new List<int>();
 
-                // Initialize with all distributors as potentially available
                 for (int j = 1; j <= input.DistributorsPerProvince[i]; j++)
                 {
                     availableDistributors[i].Add(currentRank + j);
@@ -69,22 +64,20 @@ namespace Drug_Distribution_Mpi_Project
         {
             Console.WriteLine("Master sending initial orders to provinces...");
 
-            // Send all order counts first
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
                 int totalOrders = input.OrdersPerProvince[provinceIndex];
                 int targetRank = provinceLeaderRanks[provinceIndex];
                 Console.WriteLine($"Master notifying Province {provinceIndex} (Leader Rank {targetRank}) about {totalOrders} orders");
-                worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
+                worldComm.Send(totalOrders, targetRank, 2); 
             }
 
-            // Then wait for acknowledgments from all provinces
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
                 int targetRank = provinceLeaderRanks[provinceIndex];
                 try
                 {
-                    int ack = worldComm.Receive<int>(targetRank, 3); // Tag 3 for acknowledgment
+                    int ack = worldComm.Receive<int>(targetRank, 3); 
                     Console.WriteLine($"Master received acknowledgment from Province {provinceIndex}");
                 }
                 catch (Exception ex)
@@ -99,7 +92,7 @@ namespace Drug_Distribution_Mpi_Project
         private static void MonitorProvincesWithTimeout(Intracommunicator worldComm, InputData input)
         {
             int completedProvinces = 0;
-            int maxIterations = 3000; // Increased timeout
+            int maxIterations = 3000; 
             int currentIteration = 0;
             int consecutiveNoActivityCount = 0;
 
@@ -110,10 +103,9 @@ namespace Drug_Distribution_Mpi_Project
                 currentIteration++;
                 bool foundActivity = false;
 
-                // Check for reports from province leaders
                 try
                 {
-                    Status status = worldComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 10); // Tag 10 for reports
+                    Status status = worldComm.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 10); 
 
                     if (status != null)
                     {
@@ -141,7 +133,6 @@ namespace Drug_Distribution_Mpi_Project
                     Console.WriteLine($"Master error checking reports: {ex.Message}");
                 }
 
-                // Check if we can infer completion from available distributors
                 if (!foundActivity)
                 {
                     consecutiveNoActivityCount++;
@@ -150,17 +141,15 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (!foundActivity)
                 {
-                    Thread.Sleep(50); // Reduced sleep time for better responsiveness
+                    Thread.Sleep(50);
                 }
 
-                // Print progress every 200 iterations
                 if (currentIteration % 200 == 0)
                 {
                     Console.WriteLine($"\n✓ Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
                     PrintProvinceStatus(input);
                 }
 
-                // If no activity for a long time, force check completion
                 if (consecutiveNoActivityCount > 100)
                 {
                     Console.WriteLine("\nMaster: No activity detected for a while, checking for implicit completion...");
@@ -182,13 +171,9 @@ namespace Drug_Distribution_Mpi_Project
             {
                 if (!provinceCompletionStatus[provinceIndex])
                 {
-                    // Check if all distributors from this province are available
-                    // This might indicate the province has completed its work
                     int expectedDistributors = input.DistributorsPerProvince[provinceIndex];
                     int availableFromThisProvince = availableDistributors[provinceIndex].Count;
 
-                    // If we have reports of available distributors equal to expected count,
-                    // it's likely the province is done
                     if (availableFromThisProvince >= expectedDistributors)
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
@@ -204,7 +189,6 @@ namespace Drug_Distribution_Mpi_Project
 
         private static void ForceCompletion(ref int completedProvinces, InputData input)
         {
-            // Force completion by marking all provinces as complete
             for (int i = 0; i < input.NumOfProvinces; i++)
             {
                 if (!provinceCompletionStatus[i])
@@ -235,13 +219,12 @@ namespace Drug_Distribution_Mpi_Project
         {
             Console.WriteLine("\nMaster sending termination signals...");
 
-            // Send termination to all non-master processes
             for (int rank = 1; rank < worldComm.Size; rank++)
             {
                 try
                 {
-                    worldComm.Send(-1, rank, 99); // Tag 99 for termination
-                    Thread.Sleep(10); // Small delay to ensure message delivery
+                    worldComm.Send(-1, rank, 99);
+                    Thread.Sleep(10); 
                 }
                 catch (Exception ex)
                 {
@@ -308,7 +291,6 @@ namespace Drug_Distribution_Mpi_Project
 
         private static void HandleDistributorShortage(Intracommunicator worldComm, ProvinceReport report, int needyProvinceIndex, InputData input)
         {
-            // Find an available distributor from another province
             for (int sourceProvinceIndex = 0; sourceProvinceIndex < input.NumOfProvinces; sourceProvinceIndex++)
             {
                 if (sourceProvinceIndex == needyProvinceIndex || provinceCompletionStatus[sourceProvinceIndex])
@@ -321,7 +303,6 @@ namespace Drug_Distribution_Mpi_Project
 
                     try
                     {
-                        // Send reallocation command
                         var reallocationCommand = new ReallocationCommand
                         {
                             TargetProvinceIndex = needyProvinceIndex,
@@ -329,21 +310,19 @@ namespace Drug_Distribution_Mpi_Project
                             SourceProvinceIndex = sourceProvinceIndex
                         };
 
-                        worldComm.Send(reallocationCommand, distributorToMove, 11); // Tag 11 for reallocation
+                        worldComm.Send(reallocationCommand, distributorToMove, 11); 
 
                         Console.ForegroundColor = ConsoleColor.Magenta;
                         Console.WriteLine($"\nMaster reallocating Distributor {distributorToMove} from Province {sourceProvinceIndex} to Province {needyProvinceIndex}");
                         Console.ResetColor();
 
-                        // Notify target province about incoming help
-                        worldComm.Send(distributorToMove, provinceLeaderRanks[needyProvinceIndex], 12); // Tag 12 for incoming distributor
+                        worldComm.Send(distributorToMove, provinceLeaderRanks[needyProvinceIndex], 12); 
 
                         return;
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Master error reallocating distributor: {ex.Message}");
-                        // Put distributor back in available list
                         availableDistributors[sourceProvinceIndex].Add(distributorToMove);
                     }
                 }
