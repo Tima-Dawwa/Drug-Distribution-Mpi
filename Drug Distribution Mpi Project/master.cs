@@ -11,6 +11,8 @@ namespace Drug_Distribution_Mpi_Project
         private static Dictionary<int, List<int>> availableDistributors = new Dictionary<int, List<int>>();
         private static Dictionary<int, int> provinceLeaderRanks = new Dictionary<int, int>();
         private static Dictionary<int, bool> provinceCompletionStatus = new Dictionary<int, bool>();
+        private static Dictionary<int, int> provinceOrderCounts = new Dictionary<int, int>();
+        private static Dictionary<int, int> provinceCompletedOrders = new Dictionary<int, int>();
 
         public static void Run(Intracommunicator worldComm, InputData input)
         {
@@ -47,6 +49,8 @@ namespace Drug_Distribution_Mpi_Project
             {
                 provinceLeaderRanks[i] = currentRank;
                 provinceCompletionStatus[i] = false;
+                provinceOrderCounts[i] = input.OrdersPerProvince[i];
+                provinceCompletedOrders[i] = 0;
                 availableDistributors[i] = new List<int>();
 
                 // Initialize with all distributors as potentially available
@@ -95,8 +99,9 @@ namespace Drug_Distribution_Mpi_Project
         private static void MonitorProvincesWithTimeout(Intracommunicator worldComm, InputData input)
         {
             int completedProvinces = 0;
-            int maxIterations = 2000; // Increased timeout
+            int maxIterations = 3000; // Increased timeout
             int currentIteration = 0;
+            int consecutiveNoActivityCount = 0;
 
             Console.WriteLine("Master starting monitoring loop...");
 
@@ -113,6 +118,7 @@ namespace Drug_Distribution_Mpi_Project
                     if (status != null)
                     {
                         foundActivity = true;
+                        consecutiveNoActivityCount = 0;
                         var report = worldComm.Receive<ProvinceReport>(status.Source, 10);
                         ProcessProvinceReport(worldComm, report, input);
 
@@ -135,6 +141,13 @@ namespace Drug_Distribution_Mpi_Project
                     Console.WriteLine($"Master error checking reports: {ex.Message}");
                 }
 
+                // Check if we can infer completion from available distributors
+                if (!foundActivity)
+                {
+                    consecutiveNoActivityCount++;
+                    CheckForImplicitCompletion(ref completedProvinces, input);
+                }
+
                 if (!foundActivity)
                 {
                     Thread.Sleep(50); // Reduced sleep time for better responsiveness
@@ -144,24 +157,78 @@ namespace Drug_Distribution_Mpi_Project
                 if (currentIteration % 200 == 0)
                 {
                     Console.WriteLine($"Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
+                    PrintProvinceStatus(input);
+                }
+
+                // If no activity for a long time, force check completion
+                if (consecutiveNoActivityCount > 100)
+                {
+                    Console.WriteLine("Master: No activity detected for a while, checking for implicit completion...");
+                    CheckForImplicitCompletion(ref completedProvinces, input);
+                    consecutiveNoActivityCount = 0;
                 }
             }
 
             if (currentIteration >= maxIterations)
             {
                 Console.WriteLine($"Master reached maximum iterations ({maxIterations}). Forcing completion.");
+                ForceCompletion(ref completedProvinces, input);
+            }
+        }
 
-                // Force completion by marking all provinces as complete
-                for (int i = 0; i < input.NumOfProvinces; i++)
+        private static void CheckForImplicitCompletion(ref int completedProvinces, InputData input)
+        {
+            for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
+            {
+                if (!provinceCompletionStatus[provinceIndex])
                 {
-                    if (!provinceCompletionStatus[i])
+                    // Check if all distributors from this province are available
+                    // This might indicate the province has completed its work
+                    int expectedDistributors = input.DistributorsPerProvince[provinceIndex];
+                    int availableFromThisProvince = availableDistributors[provinceIndex].Count;
+
+                    // If we have reports of available distributors equal to expected count,
+                    // it's likely the province is done
+                    if (availableFromThisProvince >= expectedDistributors)
                     {
-                        Console.WriteLine($"Force completing Province {i}");
-                        provinceCompletionStatus[i] = true;
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"Master: Inferring Province {provinceIndex} completion based on available distributors ({availableFromThisProvince}/{expectedDistributors})");
+                        Console.ResetColor();
+
+                        provinceCompletionStatus[provinceIndex] = true;
                         completedProvinces++;
                     }
                 }
             }
+        }
+
+        private static void ForceCompletion(ref int completedProvinces, InputData input)
+        {
+            // Force completion by marking all provinces as complete
+            for (int i = 0; i < input.NumOfProvinces; i++)
+            {
+                if (!provinceCompletionStatus[i])
+                {
+                    Console.WriteLine($"Force completing Province {i}");
+                    provinceCompletionStatus[i] = true;
+                    completedProvinces++;
+                }
+            }
+        }
+
+        private static void PrintProvinceStatus(InputData input)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("=== Province Status ===");
+            for (int i = 0; i < input.NumOfProvinces; i++)
+            {
+                string status = provinceCompletionStatus[i] ? "COMPLETED" : "RUNNING";
+                int availableCount = availableDistributors[i].Count;
+                int totalDistributors = input.DistributorsPerProvince[i];
+                Console.WriteLine($"Province {i}: {status} | Available Distributors: {availableCount}/{totalDistributors}");
+            }
+            Console.WriteLine("=====================");
+            Console.ResetColor();
         }
 
         private static void SendTerminationSignals(Intracommunicator worldComm, InputData input)
@@ -174,6 +241,7 @@ namespace Drug_Distribution_Mpi_Project
                 try
                 {
                     worldComm.Send(-1, rank, 99); // Tag 99 for termination
+                    Thread.Sleep(10); // Small delay to ensure message delivery
                 }
                 catch (Exception ex)
                 {
@@ -211,6 +279,10 @@ namespace Drug_Distribution_Mpi_Project
                     case ReportType.AllOrdersCompleted:
                         HandleProvinceCompletion(provinceIndex);
                         break;
+
+                    case ReportType.StatusUpdate:
+                        HandleStatusUpdate(report, provinceIndex);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -226,6 +298,12 @@ namespace Drug_Distribution_Mpi_Project
                 availableDistributors[provinceIndex].Add(report.DistributorRank);
                 Console.WriteLine($"📋 Distributor {report.DistributorRank} in Province {provinceIndex} is now available");
             }
+        }
+
+        private static void HandleStatusUpdate(ProvinceReport report, int provinceIndex)
+        {
+            provinceCompletedOrders[provinceIndex] = report.RemainingOrders;
+            Console.WriteLine($"📊 Province {provinceIndex} progress: {report.RemainingOrders} orders remaining");
         }
 
         private static void HandleDistributorShortage(Intracommunicator worldComm, ProvinceReport report, int needyProvinceIndex, InputData input)

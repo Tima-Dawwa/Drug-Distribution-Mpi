@@ -12,11 +12,20 @@ namespace Drug_Distribution_Mpi_Project
             int worldRank = Communicator.world.Rank;
             bool isReallocated = false;
             int currentProvinceIndex = provinceIndex;
+            bool terminationRequested = false;
 
             Console.WriteLine($"[Distributor Rank {rank} | World Rank {worldRank} | Province {provinceIndex}] Starting distributor process");
 
-            while (true)
+            while (!terminationRequested)
             {
+                // Check for termination signals first
+                if (CheckForTermination(worldRank))
+                {
+                    Console.WriteLine($"[Distributor {worldRank}] Received termination signal. Exiting.");
+                    terminationRequested = true;
+                    break;
+                }
+
                 // Check for reallocation commands from Master
                 if (CheckForReallocation(worldRank, ref isReallocated, ref currentProvinceIndex))
                 {
@@ -37,7 +46,8 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (task.OrderId == -1)
                 {
-                    Console.WriteLine($"[Distributor {worldRank}] Received termination signal. Exiting.");
+                    Console.WriteLine($"[Distributor {worldRank}] Received task termination signal. Exiting.");
+                    terminationRequested = true;
                     break;
                 }
 
@@ -48,11 +58,34 @@ namespace Drug_Distribution_Mpi_Project
 
                 Console.WriteLine($"[Distributor {worldRank}] ✅ Completed order {task.OrderId}");
 
-                // Send completion notification to appropriate province leader
+                // Send completion notification to the province that assigned this task
                 SendCompletionNotification(provinceComm, task, isReallocated, worldRank, currentProvinceIndex);
+
+                // After completing a task, report availability
+                ReportAvailability(worldRank, isReallocated, currentProvinceIndex);
             }
 
             Console.WriteLine($"[Distributor {worldRank}] Shutting down.");
+        }
+
+        private static bool CheckForTermination(int worldRank)
+        {
+            try
+            {
+                Status status = Communicator.world.ImmediateProbe(0, 99); // Tag 99 for termination
+
+                if (status != null)
+                {
+                    int terminationSignal = Communicator.world.Receive<int>(0, 99);
+                    return terminationSignal == -1;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Distributor {worldRank}] Error checking termination: {ex.Message}");
+            }
+
+            return false;
         }
 
         private static bool CheckForReallocation(int worldRank, ref bool isReallocated, ref int currentProvinceIndex)
@@ -95,7 +128,8 @@ namespace Drug_Distribution_Mpi_Project
                         return new DeliveryTask
                         {
                             OrderId = orderId,
-                            ProvinceLeaderRank = status.Source
+                            AssigningProvinceLeaderRank = status.Source, // Track who assigned this task
+                            IsFromExternalProvince = true
                         };
                     }
                 }
@@ -111,7 +145,8 @@ namespace Drug_Distribution_Mpi_Project
                         return new DeliveryTask
                         {
                             OrderId = orderId,
-                            ProvinceLeaderRank = 0 // Local province leader (rank 0 in province communicator)
+                            AssigningProvinceLeaderRank = 0, // Local province leader (rank 0 in province communicator)
+                            IsFromExternalProvince = false
                         };
                     }
                 }
@@ -129,11 +164,11 @@ namespace Drug_Distribution_Mpi_Project
         {
             try
             {
-                if (isReallocated)
+                if (task.IsFromExternalProvince)
                 {
-                    // Send completion to the province leader we're currently helping via world communicator
-                    Communicator.world.Send(task.OrderId, task.ProvinceLeaderRank, 1); // Tag 1 for completion
-                    Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to external province leader {task.ProvinceLeaderRank}");
+                    // Send completion to the province leader who assigned this task via world communicator
+                    Communicator.world.Send(task.OrderId, task.AssigningProvinceLeaderRank, 1); // Tag 1 for completion
+                    Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to assigning province leader {task.AssigningProvinceLeaderRank}");
                 }
                 else
                 {
@@ -148,10 +183,32 @@ namespace Drug_Distribution_Mpi_Project
             }
         }
 
+        private static void ReportAvailability(int worldRank, bool isReallocated, int currentProvinceIndex)
+        {
+            try
+            {
+                // Report availability to Master
+                var availabilityReport = new ProvinceReport
+                {
+                    ProvinceLeaderRank = worldRank, // Use world rank as identifier
+                    ReportType = ReportType.DistributorAvailable,
+                    DistributorRank = worldRank
+                };
+
+                Communicator.world.Send(availabilityReport, 0, 10); // Tag 10 for reports to Master
+                Console.WriteLine($"[Distributor {worldRank}] Reported availability to Master");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Distributor {worldRank}] Error reporting availability: {ex.Message}");
+            }
+        }
+
         private class DeliveryTask
         {
             public int OrderId { get; set; }
-            public int ProvinceLeaderRank { get; set; }
+            public int AssigningProvinceLeaderRank { get; set; }
+            public bool IsFromExternalProvince { get; set; }
         }
     }
 }
