@@ -1,6 +1,7 @@
 using Drug_Distribution_Mpi_Project.Helper;
 using MPI;
 using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace Drug_Distribution_Mpi_Project
@@ -19,6 +20,9 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (rank == 0)
                 {
+                    var stopwatch = new Stopwatch();
+                    stopwatch.Start();
+
                     Console.WriteLine("=== STARTING PARALLEL DRUG DISTRIBUTION SYSTEM ===");
                     Console.WriteLine($"Total MPI Processes: {size}");
 
@@ -48,10 +52,14 @@ namespace Drug_Distribution_Mpi_Project
 
                     Console.WriteLine("\n=== INPUT SUMMARY ===");
                     Console.WriteLine($"Number of Provinces: {input.NumOfProvinces}");
+
+                    // Calculate total orders across all provinces
+                    int totalOrders = 0;
                     for (int i = 0; i < input.NumOfProvinces; i++)
                     {
-                        int totalOrders = input.PharmaciesPerProvince[i] + input.ClinicsPerProvince[i] + input.HospitalsPerProvince[i];
-                        Console.WriteLine($"Province {i}: {totalOrders} orders, {input.DistributorsPerProvince[i]} distributors");
+                        int provinceOrders = input.PharmaciesPerProvince[i] + input.ClinicsPerProvince[i] + input.HospitalsPerProvince[i];
+                        totalOrders += provinceOrders;
+                        Console.WriteLine($"Province {i}: {provinceOrders} orders, {input.DistributorsPerProvince[i]} distributors");
                     }
                     Console.WriteLine($"Average Delivery Time: {input.AvgDeliveryTime} seconds");
                     Console.WriteLine("====================\n");
@@ -73,7 +81,6 @@ namespace Drug_Distribution_Mpi_Project
                     for (int i = 1; i < size; i++)
                     {
                         comm.Send(input, i, 0);
-                     
                     }
                     Console.WriteLine("Master waiting for all processes to receive input data...\n");
                     comm.Barrier();
@@ -82,9 +89,16 @@ namespace Drug_Distribution_Mpi_Project
                     comm.Barrier();
 
                     Console.WriteLine("\nAll processes synchronized. Master starting coordination...\n");
-
+                    stopwatch.Stop();
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\nMASTER PROCESS COMPLETED SUCCESSFULLY!");
+                    Console.WriteLine($"⏱ Total Parallel Execution Time: {stopwatch.Elapsed.TotalSeconds:F4} seconds");
+                    Console.ResetColor();
+
+                    // Calculate sequential time using the total orders
+                    double sequentialTime = totalOrders * input.AvgDeliveryTime;
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"\n🕒 Estimated Sequential Execution Time: {sequentialTime:F4} seconds");
                     Console.ResetColor();
                 }
                 else
