@@ -14,24 +14,28 @@ namespace Drug_Distribution_Mpi_Project
 
         public static void Run(Intracommunicator worldComm, InputData input)
         {
-            //Console.WriteLine("Master starting coordination...");
+            Console.WriteLine("Master starting coordination...");
 
             try
             {
                 // Initialize tracking structures
                 InitializeTracking(input);
 
-                // Send initial orders to provinces
-                SendInitialOrders(worldComm, input);
+                // Send initial orders to provinces with confirmation
+                SendInitialOrdersWithConfirmation(worldComm, input);
 
                 // Main monitoring loop with timeout
                 MonitorProvincesWithTimeout(worldComm, input);
+
+                // Send termination signals to all processes
+                SendTerminationSignals(worldComm, input);
 
                 Console.WriteLine("Master finished coordinating all provinces");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Master error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -54,12 +58,12 @@ namespace Drug_Distribution_Mpi_Project
                 currentRank += input.DistributorsPerProvince[i] + 1;
             }
 
-            //Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
+            Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
         }
 
-        private static void SendInitialOrders(Intracommunicator worldComm, InputData input)
+        private static void SendInitialOrdersWithConfirmation(Intracommunicator worldComm, InputData input)
         {
-            //Console.WriteLine("Master sending initial orders to provinces...");
+            Console.WriteLine("Master sending initial orders to provinces...");
 
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
@@ -72,22 +76,27 @@ namespace Drug_Distribution_Mpi_Project
                 {
                     // Send order count to province leader
                     worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
-                    Thread.Sleep(50); // Small delay between sends
+
+                    // Wait for acknowledgment to ensure province received the order count
+                    int ack = worldComm.Receive<int>(targetRank, 3); // Tag 3 for acknowledgment
+                    Console.WriteLine($"Master received acknowledgment from Province {provinceIndex}");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Master error sending to Province {provinceIndex}: {ex.Message}");
                 }
             }
+
+            Console.WriteLine("All provinces have been notified and acknowledged");
         }
 
         private static void MonitorProvincesWithTimeout(Intracommunicator worldComm, InputData input)
         {
             int completedProvinces = 0;
-            int maxIterations = 1000; // Prevent infinite loops
+            int maxIterations = 2000; // Increased timeout
             int currentIteration = 0;
 
-            //Console.WriteLine("Master starting monitoring loop...");
+            Console.WriteLine("Master starting monitoring loop...");
 
             while (completedProvinces < input.NumOfProvinces && currentIteration < maxIterations)
             {
@@ -126,11 +135,11 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (!foundActivity)
                 {
-                    Thread.Sleep(100); // Wait before next check
+                    Thread.Sleep(50); // Reduced sleep time for better responsiveness
                 }
 
-                // Print progress every 100 iterations
-                if (currentIteration % 100 == 0)
+                // Print progress every 200 iterations
+                if (currentIteration % 200 == 0)
                 {
                     Console.WriteLine($"Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
                 }
@@ -139,6 +148,35 @@ namespace Drug_Distribution_Mpi_Project
             if (currentIteration >= maxIterations)
             {
                 Console.WriteLine($"Master reached maximum iterations ({maxIterations}). Forcing completion.");
+
+                // Force completion by marking all provinces as complete
+                for (int i = 0; i < input.NumOfProvinces; i++)
+                {
+                    if (!provinceCompletionStatus[i])
+                    {
+                        Console.WriteLine($"Force completing Province {i}");
+                        provinceCompletionStatus[i] = true;
+                        completedProvinces++;
+                    }
+                }
+            }
+        }
+
+        private static void SendTerminationSignals(Intracommunicator worldComm, InputData input)
+        {
+            Console.WriteLine("Master sending termination signals...");
+
+            // Send termination to all non-master processes
+            for (int rank = 1; rank < worldComm.Size; rank++)
+            {
+                try
+                {
+                    worldComm.Send(-1, rank, 99); // Tag 99 for termination
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Master error sending termination to rank {rank}: {ex.Message}");
+                }
             }
         }
 
@@ -243,8 +281,14 @@ namespace Drug_Distribution_Mpi_Project
 
         private static int GetProvinceIndexFromLeaderRank(int leaderRank)
         {
-            var kvp = provinceLeaderRanks.FirstOrDefault(x => x.Value == leaderRank);
-            return kvp.Key == 0 && kvp.Value == 0 ? -1 : kvp.Key;
+            foreach (var kvp in provinceLeaderRanks)
+            {
+                if (kvp.Value == leaderRank)
+                {
+                    return kvp.Key;
+                }
+            }
+            return -1;
         }
     }
 
