@@ -23,9 +23,6 @@ namespace Drug_Distribution_Mpi_Project
                     var stopwatch = new Stopwatch();
                     stopwatch.Start();
 
-                    Console.WriteLine("=== STARTING PARALLEL DRUG DISTRIBUTION SYSTEM ===");
-                    Console.WriteLine($"Total MPI Processes: {size}");
-
                     string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
                     string runnerFolder = Path.Combine(projectRoot, "Runner");
                     string inputFile = Path.Combine(runnerFolder, "input_data.txt");
@@ -33,22 +30,23 @@ namespace Drug_Distribution_Mpi_Project
                     if (File.Exists(inputFile))
                     {
                         input = Input.LoadFromTextFile();
-                        // تيما لا تمسحي هاد الكومنت
-                        //try
-                        //{
-                        //    File.Delete(inputFile);
-                        //}
-                        //catch (Exception ex)
-                        //{
-                        //    Console.WriteLine($"could not delete {inputFile}: {ex.Message}");
-                        //}
+                        try
+                        {
+                            File.Delete(inputFile);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"could not delete {inputFile}: {ex.Message}");
+                        }
                     }
                     else
                     {
                         input = Input.GetInput();
                         Input.SaveToTextFile(input);
-                        Console.WriteLine("Input collected interactively and saved");
                     }
+
+                    Console.WriteLine("=== STARTING PARALLEL DRUG DISTRIBUTION SYSTEM ===");
+                    Console.WriteLine($"Total MPI Processes: {size}");
 
                     Console.WriteLine("\n=== INPUT SUMMARY ===");
                     Console.WriteLine($"Number of Provinces: {input.NumOfProvinces}");
@@ -68,7 +66,7 @@ namespace Drug_Distribution_Mpi_Project
                     if (size != requiredProcesses)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"❌ ERROR: Process count mismatch!");
+                        Console.WriteLine($"   ERROR: Process count mismatch!");
                         Console.WriteLine($"   Required: {requiredProcesses} processes");
                         Console.WriteLine($"   Actual: {size} processes");
                         Console.ResetColor();
@@ -92,13 +90,13 @@ namespace Drug_Distribution_Mpi_Project
                     stopwatch.Stop();
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\nMASTER PROCESS COMPLETED SUCCESSFULLY!");
-                    Console.WriteLine($"⏱ Total Parallel Execution Time: {stopwatch.Elapsed.TotalSeconds:F4} seconds");
+                    Console.WriteLine($"Total Parallel Execution Time: {stopwatch.Elapsed.TotalSeconds:F4} seconds");
                     Console.ResetColor();
 
                     // Calculate sequential time using the total orders
                     double sequentialTime = totalOrders * input.AvgDeliveryTime;
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"\n🕒 Estimated Sequential Execution Time: {sequentialTime:F4} seconds");
+                    Console.WriteLine($"\nEstimated Sequential Execution Time: {sequentialTime:F4} seconds");
                     Console.ResetColor();
                 }
                 else
