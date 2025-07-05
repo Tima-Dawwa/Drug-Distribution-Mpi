@@ -65,25 +65,27 @@ namespace Drug_Distribution_Mpi_Project
         {
             Console.WriteLine("Master sending initial orders to provinces...");
 
+            // Send all order counts first
             for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
             {
                 int totalOrders = input.OrdersPerProvince[provinceIndex];
                 int targetRank = provinceLeaderRanks[provinceIndex];
-
                 Console.WriteLine($"Master notifying Province {provinceIndex} (Leader Rank {targetRank}) about {totalOrders} orders");
+                worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
+            }
 
+            // Then wait for acknowledgments from all provinces
+            for (int provinceIndex = 0; provinceIndex < input.NumOfProvinces; provinceIndex++)
+            {
+                int targetRank = provinceLeaderRanks[provinceIndex];
                 try
                 {
-                    // Send order count to province leader
-                    worldComm.Send(totalOrders, targetRank, 2); // Tag 2 for order count
-
-                    // Wait for acknowledgment to ensure province received the order count
                     int ack = worldComm.Receive<int>(targetRank, 3); // Tag 3 for acknowledgment
                     Console.WriteLine($"Master received acknowledgment from Province {provinceIndex}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Master error sending to Province {provinceIndex}: {ex.Message}");
+                    Console.WriteLine($"Master error receiving acknowledgment from Province {provinceIndex}: {ex.Message}");
                 }
             }
 
