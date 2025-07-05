@@ -46,7 +46,6 @@ namespace Drug_Distribution_Mpi_Project
                         Console.WriteLine("Input collected interactively and saved");
                     }
 
-                    // Print input summary
                     Console.WriteLine("\n=== INPUT SUMMARY ===");
                     Console.WriteLine($"Number of Provinces: {input.NumOfProvinces}");
                     for (int i = 0; i < input.NumOfProvinces; i++)
@@ -57,7 +56,6 @@ namespace Drug_Distribution_Mpi_Project
                     Console.WriteLine($"Average Delivery Time: {input.AvgDeliveryTime} seconds");
                     Console.WriteLine("====================\n");
 
-                    // Validate process count
                     int requiredProcesses = RoleAssignHelper.GetTotalRanksNeeded(input);
                     if (size != requiredProcesses)
                     {
@@ -69,17 +67,14 @@ namespace Drug_Distribution_Mpi_Project
                         return;
                     }
 
-                    // Print rank assignments
                     RoleAssignHelper.PrintRankAssignments(input);
 
-                    // Send input to all other processes
                     Console.WriteLine("Sending input data to all processes...");
                     for (int i = 1; i < size; i++)
                     {
                         comm.Send(input, i, 0);
                      
                     }
-                    // FIRST BARRIER: Wait for all processes to receive input data
                     Console.WriteLine("Master waiting for all processes to receive input data...\n");
                     comm.Barrier();
 
@@ -94,16 +89,10 @@ namespace Drug_Distribution_Mpi_Project
                 }
                 else
                 {
-                    // Receive input from master
                     input = comm.Receive<InputData>(0, 0);
-
-                    // FIRST BARRIER: Confirm input data received
                     comm.Barrier();
 
-                    // Assign role and run
                     RoleAssignHelper.AssignAndRun(comm, rank, input);
-
-                    // SECOND BARRIER: Confirm role assignment complete
                     comm.Barrier();
                 }
             }

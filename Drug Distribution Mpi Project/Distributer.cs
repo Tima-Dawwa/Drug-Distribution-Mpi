@@ -18,7 +18,6 @@ namespace Drug_Distribution_Mpi_Project
 
             while (!terminationRequested)
             {
-                // Check for termination signals first
                 if (CheckForTermination(worldRank))
                 {
                     Console.WriteLine($"[Distributor {worldRank}] Received termination signal. Exiting.");
@@ -26,7 +25,6 @@ namespace Drug_Distribution_Mpi_Project
                     break;
                 }
 
-                // Check for reallocation commands from Master
                 if (CheckForReallocation(worldRank, ref isReallocated, ref currentProvinceIndex))
                 {
                     Console.ForegroundColor = ConsoleColor.Magenta;
@@ -34,12 +32,10 @@ namespace Drug_Distribution_Mpi_Project
                     Console.ResetColor();
                 }
 
-                // Receive tasks from appropriate source
                 var task = ReceiveTask(provinceComm, worldRank, isReallocated, currentProvinceIndex);
 
                 if (task == null)
                 {
-                    // No task available, wait a bit and try again
                     Thread.Sleep(50);
                     continue;
                 }
@@ -53,15 +49,12 @@ namespace Drug_Distribution_Mpi_Project
 
                 Console.WriteLine($"[Distributor {worldRank} | Province {currentProvinceIndex}] Processing order {task.OrderId}...");
 
-                // Simulate processing time based on input delivery time
-                Thread.Sleep(input.AvgDeliveryTime * 10); // Scale down for simulation
+                Thread.Sleep(input.AvgDeliveryTime * 10); 
 
                 Console.WriteLine($"✓ [Distributor {worldRank}] completed order {task.OrderId}");
 
-                // Send completion notification to the province that assigned this task
                 SendCompletionNotification(provinceComm, task, isReallocated, worldRank, currentProvinceIndex);
 
-                // After completing a task, report availability
                 ReportAvailability(worldRank, isReallocated, currentProvinceIndex);
             }
 
@@ -72,7 +65,7 @@ namespace Drug_Distribution_Mpi_Project
         {
             try
             {
-                Status status = Communicator.world.ImmediateProbe(0, 99); // Tag 99 for termination
+                Status status = Communicator.world.ImmediateProbe(0, 99); 
 
                 if (status != null)
                 {
@@ -92,7 +85,7 @@ namespace Drug_Distribution_Mpi_Project
         {
             try
             {
-                Status status = Communicator.world.ImmediateProbe(0, 11); // Tag 11 for reallocation commands
+                Status status = Communicator.world.ImmediateProbe(0, 11);
 
                 if (status != null)
                 {
@@ -118,7 +111,6 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (isReallocated)
                 {
-                    // Check for tasks from any province leader via world communicator
                     status = Communicator.world.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 0);
 
                     if (status != null)
@@ -128,15 +120,14 @@ namespace Drug_Distribution_Mpi_Project
                         return new DeliveryTask
                         {
                             OrderId = orderId,
-                            AssigningProvinceLeaderRank = status.Source, // Track who assigned this task
+                            AssigningProvinceLeaderRank = status.Source,
                             IsFromExternalProvince = true
                         };
                     }
                 }
                 else
                 {
-                    // Check for tasks from local province leader
-                    status = provinceComm.ImmediateProbe(0, 0); // Tag 0 for task assignment
+                    status = provinceComm.ImmediateProbe(0, 0); 
 
                     if (status != null)
                     {
@@ -145,7 +136,7 @@ namespace Drug_Distribution_Mpi_Project
                         return new DeliveryTask
                         {
                             OrderId = orderId,
-                            AssigningProvinceLeaderRank = 0, // Local province leader (rank 0 in province communicator)
+                            AssigningProvinceLeaderRank = 0, 
                             IsFromExternalProvince = false
                         };
                     }
@@ -166,14 +157,12 @@ namespace Drug_Distribution_Mpi_Project
             {
                 if (task.IsFromExternalProvince)
                 {
-                    // Send completion to the province leader who assigned this task via world communicator
-                    Communicator.world.Send(task.OrderId, task.AssigningProvinceLeaderRank, 1); // Tag 1 for completion
+                    Communicator.world.Send(task.OrderId, task.AssigningProvinceLeaderRank, 1); 
                     Console.WriteLine($"\n[Distributor {worldRank}] Sent completion of order {task.OrderId} to assigning province leader {task.AssigningProvinceLeaderRank}");
                 }
                 else
                 {
-                    // Send to local province leader
-                    provinceComm.Send(task.OrderId, 0, 1); // Tag 1 for completion
+                    provinceComm.Send(task.OrderId, 0, 1); 
                     Console.WriteLine($"\n[Distributor {worldRank}] Sent completion of order {task.OrderId} to local province leader");
                 }
             }
@@ -187,15 +176,14 @@ namespace Drug_Distribution_Mpi_Project
         {
             try
             {
-                // Report availability to Master
                 var availabilityReport = new ProvinceReport
                 {
-                    ProvinceLeaderRank = worldRank, // Use world rank as identifier
+                    ProvinceLeaderRank = worldRank, 
                     ReportType = ReportType.DistributorAvailable,
                     DistributorRank = worldRank
                 };
 
-                Communicator.world.Send(availabilityReport, 0, 10); // Tag 10 for reports to Master
+                Communicator.world.Send(availabilityReport, 0, 10);
                 Console.WriteLine($"\n[Distributor {worldRank}] Reported availability to Master");
             }
             catch (Exception ex)
