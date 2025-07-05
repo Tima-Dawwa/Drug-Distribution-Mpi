@@ -43,7 +43,7 @@ namespace Drug_Distribution_Mpi_Project
                     {
                         input = Input.GetInput();
                         Input.SaveToTextFile(input);
-                        Console.WriteLine("✅ Input collected interactively and saved");
+                        Console.WriteLine("Input collected interactively and saved");
                     }
 
                     // Print input summary
@@ -80,15 +80,13 @@ namespace Drug_Distribution_Mpi_Project
                      
                     }
                     // FIRST BARRIER: Wait for all processes to receive input data
-                    Console.WriteLine("Master waiting for all processes to receive input data...");
+                    Console.WriteLine("Master waiting for all processes to receive input data...\n");
                     comm.Barrier();
 
-                    // SECOND BARRIER: Wait for all processes to complete role assignment and initialization
-                    Console.WriteLine("Master waiting for all processes to complete role assignment...");
                     RoleAssignHelper.AssignAndRun(comm, rank, input);
                     comm.Barrier();
 
-                    Console.WriteLine("All processes synchronized. Master starting coordination...\n");
+                    Console.WriteLine("\nAll processes synchronized. Master starting coordination...\n");
 
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\nMASTER PROCESS COMPLETED SUCCESSFULLY!");

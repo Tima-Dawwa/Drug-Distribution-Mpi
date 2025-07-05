@@ -16,7 +16,7 @@ namespace Drug_Distribution_Mpi_Project
 
         public static void Run(Intracommunicator worldComm, InputData input)
         {
-            Console.WriteLine("Master starting coordination...");
+            Console.WriteLine("\nMaster starting coordination...");
 
             try
             {
@@ -32,7 +32,7 @@ namespace Drug_Distribution_Mpi_Project
                 // Send termination signals to all processes
                 SendTerminationSignals(worldComm, input);
 
-                Console.WriteLine("Master finished coordinating all provinces");
+                Console.WriteLine("\nMaster finished coordinating all provinces √");
             }
             catch (Exception ex)
             {
@@ -62,7 +62,7 @@ namespace Drug_Distribution_Mpi_Project
                 currentRank += input.DistributorsPerProvince[i] + 1;
             }
 
-            Console.WriteLine($"Master initialized tracking for {input.NumOfProvinces} provinces");
+            Console.WriteLine($"\nMaster initialized tracking for {input.NumOfProvinces} provinces √");
         }
 
         private static void SendInitialOrdersWithConfirmation(Intracommunicator worldComm, InputData input)
@@ -103,7 +103,7 @@ namespace Drug_Distribution_Mpi_Project
             int currentIteration = 0;
             int consecutiveNoActivityCount = 0;
 
-            Console.WriteLine("Master starting monitoring loop...");
+            Console.WriteLine("\nMaster starting monitoring loop...");
 
             while (completedProvinces < input.NumOfProvinces && currentIteration < maxIterations)
             {
@@ -130,7 +130,7 @@ namespace Drug_Distribution_Mpi_Project
                                 provinceCompletionStatus[provinceIndex] = true;
                                 completedProvinces++;
                                 Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
+                                Console.WriteLine($"\n✓ Province {provinceIndex} completed all orders! ({completedProvinces}/{input.NumOfProvinces})");
                                 Console.ResetColor();
                             }
                         }
@@ -156,14 +156,14 @@ namespace Drug_Distribution_Mpi_Project
                 // Print progress every 200 iterations
                 if (currentIteration % 200 == 0)
                 {
-                    Console.WriteLine($"Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
+                    Console.WriteLine($"\n✓ Master monitoring: {completedProvinces}/{input.NumOfProvinces} provinces completed (iteration {currentIteration})");
                     PrintProvinceStatus(input);
                 }
 
                 // If no activity for a long time, force check completion
                 if (consecutiveNoActivityCount > 100)
                 {
-                    Console.WriteLine("Master: No activity detected for a while, checking for implicit completion...");
+                    Console.WriteLine("\nMaster: No activity detected for a while, checking for implicit completion...");
                     CheckForImplicitCompletion(ref completedProvinces, input);
                     consecutiveNoActivityCount = 0;
                 }
@@ -171,7 +171,7 @@ namespace Drug_Distribution_Mpi_Project
 
             if (currentIteration >= maxIterations)
             {
-                Console.WriteLine($"Master reached maximum iterations ({maxIterations}). Forcing completion.");
+                Console.WriteLine($"\nMaster reached maximum iterations ({maxIterations}). Forcing completion.");
                 ForceCompletion(ref completedProvinces, input);
             }
         }
@@ -192,7 +192,7 @@ namespace Drug_Distribution_Mpi_Project
                     if (availableFromThisProvince >= expectedDistributors)
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Master: Inferring Province {provinceIndex} completion based on available distributors ({availableFromThisProvince}/{expectedDistributors})");
+                        Console.WriteLine($"\nMaster: Inferring Province {provinceIndex} completion based on available distributors ({availableFromThisProvince}/{expectedDistributors})");
                         Console.ResetColor();
 
                         provinceCompletionStatus[provinceIndex] = true;
@@ -233,7 +233,7 @@ namespace Drug_Distribution_Mpi_Project
 
         private static void SendTerminationSignals(Intracommunicator worldComm, InputData input)
         {
-            Console.WriteLine("Master sending termination signals...");
+            Console.WriteLine("\nMaster sending termination signals...");
 
             // Send termination to all non-master processes
             for (int rank = 1; rank < worldComm.Size; rank++)
@@ -256,12 +256,12 @@ namespace Drug_Distribution_Mpi_Project
 
             if (provinceIndex < 0)
             {
-                Console.WriteLine($"Master received report from unknown province leader {report.ProvinceLeaderRank}");
+                Console.WriteLine($"\nMaster received report from unknown province leader {report.ProvinceLeaderRank}");
                 return;
             }
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"Master received report from Province {provinceIndex}: {report.ReportType}");
+            Console.WriteLine($"\nMaster received report from Province {provinceIndex}: {report.ReportType}");
             Console.ResetColor();
 
             try
@@ -296,14 +296,14 @@ namespace Drug_Distribution_Mpi_Project
             if (!availableDistributors[provinceIndex].Contains(report.DistributorRank))
             {
                 availableDistributors[provinceIndex].Add(report.DistributorRank);
-                Console.WriteLine($"📋 Distributor {report.DistributorRank} in Province {provinceIndex} is now available");
+                Console.WriteLine($"\nDistributor {report.DistributorRank} in Province {provinceIndex} is now available");
             }
         }
 
         private static void HandleStatusUpdate(ProvinceReport report, int provinceIndex)
         {
             provinceCompletedOrders[provinceIndex] = report.RemainingOrders;
-            Console.WriteLine($"📊 Province {provinceIndex} progress: {report.RemainingOrders} orders remaining");
+            Console.WriteLine($"\nProvince {provinceIndex} progress: {report.RemainingOrders} orders remaining");
         }
 
         private static void HandleDistributorShortage(Intracommunicator worldComm, ProvinceReport report, int needyProvinceIndex, InputData input)
@@ -332,7 +332,7 @@ namespace Drug_Distribution_Mpi_Project
                         worldComm.Send(reallocationCommand, distributorToMove, 11); // Tag 11 for reallocation
 
                         Console.ForegroundColor = ConsoleColor.Magenta;
-                        Console.WriteLine($"🔄 Master reallocating Distributor {distributorToMove} from Province {sourceProvinceIndex} to Province {needyProvinceIndex}");
+                        Console.WriteLine($"\nMaster reallocating Distributor {distributorToMove} from Province {sourceProvinceIndex} to Province {needyProvinceIndex}");
                         Console.ResetColor();
 
                         // Notify target province about incoming help
@@ -350,13 +350,13 @@ namespace Drug_Distribution_Mpi_Project
             }
 
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"⚠️ No available distributors found to help Province {needyProvinceIndex}");
+            Console.WriteLine($"\nNo available distributors found to help Province {needyProvinceIndex}");
             Console.ResetColor();
         }
 
         private static void HandleProvinceCompletion(int provinceIndex)
         {
-            Console.WriteLine($"📋 Province {provinceIndex} completed - distributors available for reallocation");
+            Console.WriteLine($"\n✓ Province {provinceIndex} completed - distributors available for reallocation");
         }
 
         private static int GetProvinceIndexFromLeaderRank(int leaderRank)
