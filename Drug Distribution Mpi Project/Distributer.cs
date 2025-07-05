@@ -25,13 +25,13 @@ namespace Drug_Distribution_Mpi_Project
                     Console.ResetColor();
                 }
 
-                // Receive tasks from appropriate province leader
-                var task = ReceiveTask(provinceComm, worldRank, isReallocated);
+                // Receive tasks from appropriate source
+                var task = ReceiveTask(provinceComm, worldRank, isReallocated, currentProvinceIndex);
 
                 if (task == null)
                 {
                     // No task available, wait a bit and try again
-                    Thread.Sleep(100);
+                    Thread.Sleep(50);
                     continue;
                 }
 
@@ -43,13 +43,13 @@ namespace Drug_Distribution_Mpi_Project
 
                 Console.WriteLine($"[Distributor {worldRank} | Province {currentProvinceIndex}] Processing order {task.OrderId}...");
 
-                // Simulate processing time (reduced from original to avoid long waits)
-                Thread.Sleep(100);
+                // Simulate processing time based on input delivery time
+                Thread.Sleep(input.AvgDeliveryTime * 10); // Scale down for simulation
 
                 Console.WriteLine($"[Distributor {worldRank}] ✅ Completed order {task.OrderId}");
 
                 // Send completion notification to appropriate province leader
-                SendCompletionNotification(provinceComm, task, isReallocated, worldRank);
+                SendCompletionNotification(provinceComm, task, isReallocated, worldRank, currentProvinceIndex);
             }
 
             Console.WriteLine($"[Distributor {worldRank}] Shutting down.");
@@ -77,7 +77,7 @@ namespace Drug_Distribution_Mpi_Project
             return false;
         }
 
-        private static DeliveryTask ReceiveTask(Intracommunicator provinceComm, int worldRank, bool isReallocated)
+        private static DeliveryTask ReceiveTask(Intracommunicator provinceComm, int worldRank, bool isReallocated, int currentProvinceIndex)
         {
             try
             {
@@ -85,7 +85,7 @@ namespace Drug_Distribution_Mpi_Project
 
                 if (isReallocated)
                 {
-                    // Check for tasks from Master (via world communicator)
+                    // Check for tasks from any province leader via world communicator
                     status = Communicator.world.ImmediateProbe(MPI.Unsafe.MPI_ANY_SOURCE, 0);
 
                     if (status != null)
@@ -102,7 +102,7 @@ namespace Drug_Distribution_Mpi_Project
                 else
                 {
                     // Check for tasks from local province leader
-                    status = provinceComm.ImmediateProbe(0, 0);
+                    status = provinceComm.ImmediateProbe(0, 0); // Tag 0 for task assignment
 
                     if (status != null)
                     {
@@ -111,7 +111,7 @@ namespace Drug_Distribution_Mpi_Project
                         return new DeliveryTask
                         {
                             OrderId = orderId,
-                            ProvinceLeaderRank = 0 // Local province leader
+                            ProvinceLeaderRank = 0 // Local province leader (rank 0 in province communicator)
                         };
                     }
                 }
@@ -125,20 +125,20 @@ namespace Drug_Distribution_Mpi_Project
         }
 
         private static void SendCompletionNotification(Intracommunicator provinceComm, DeliveryTask task,
-            bool isReallocated, int worldRank)
+            bool isReallocated, int worldRank, int currentProvinceIndex)
         {
             try
             {
                 if (isReallocated)
                 {
-                    // Send completion to the province we're currently helping via world communicator
-                    Communicator.world.Send(task.OrderId, task.ProvinceLeaderRank, 1);
+                    // Send completion to the province leader we're currently helping via world communicator
+                    Communicator.world.Send(task.OrderId, task.ProvinceLeaderRank, 1); // Tag 1 for completion
                     Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to external province leader {task.ProvinceLeaderRank}");
                 }
                 else
                 {
                     // Send to local province leader
-                    provinceComm.Send(task.OrderId, 0, 1);
+                    provinceComm.Send(task.OrderId, 0, 1); // Tag 1 for completion
                     Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to local province leader");
                 }
             }
