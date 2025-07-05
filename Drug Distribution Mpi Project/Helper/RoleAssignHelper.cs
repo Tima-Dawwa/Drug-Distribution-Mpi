@@ -13,6 +13,10 @@ namespace Drug_Distribution_Mpi_Project.Helper
             if (provinceIndex < 0 || provinceIndex >= totalProvinces)
             {
                 Console.WriteLine($"[Rank {rank}] has no assigned role - likely Master process");
+
+                Intracommunicator masterComm = (Intracommunicator)worldComm.Split(999, rank);
+                Master.Run(worldComm, input);
+                masterComm.Dispose();
                 return;
             }
 
@@ -24,7 +28,6 @@ namespace Drug_Distribution_Mpi_Project.Helper
             Intracommunicator provinceComm = (Intracommunicator)worldComm.Split(provinceIndex, rank);
 
             int localRank = provinceComm.Rank;
-
             if (localRank == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;

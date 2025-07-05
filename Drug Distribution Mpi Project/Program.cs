@@ -81,12 +81,14 @@ namespace Drug_Distribution_Mpi_Project
                     }
                     // FIRST BARRIER: Wait for all processes to receive input data
                     Console.WriteLine("Master waiting for all processes to receive input data...");
+                    comm.Barrier();
 
                     // SECOND BARRIER: Wait for all processes to complete role assignment and initialization
                     Console.WriteLine("Master waiting for all processes to complete role assignment...");
+                    RoleAssignHelper.AssignAndRun(comm, rank, input);
+                    comm.Barrier();
 
                     Console.WriteLine("All processes synchronized. Master starting coordination...\n");
-                    Master.Run(comm, input);
 
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("\nMASTER PROCESS COMPLETED SUCCESSFULLY!");
