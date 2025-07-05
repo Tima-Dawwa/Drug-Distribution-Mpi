@@ -14,7 +14,7 @@ namespace Drug_Distribution_Mpi_Project
             int currentProvinceIndex = provinceIndex;
             bool terminationRequested = false;
 
-            Console.WriteLine($"[Distributor Rank {rank} | World Rank {worldRank} | Province {provinceIndex}] Starting distributor process");
+            Console.WriteLine($"[Distributor Rank {rank} | Province {provinceIndex} | World Rank {worldRank}] Starting distributor process");
 
             while (!terminationRequested)
             {
@@ -56,7 +56,7 @@ namespace Drug_Distribution_Mpi_Project
                 // Simulate processing time based on input delivery time
                 Thread.Sleep(input.AvgDeliveryTime * 10); // Scale down for simulation
 
-                Console.WriteLine($"[Distributor {worldRank}] ✅ Completed order {task.OrderId}");
+                Console.WriteLine($"✓ [Distributor {worldRank}] completed order {task.OrderId}");
 
                 // Send completion notification to the province that assigned this task
                 SendCompletionNotification(provinceComm, task, isReallocated, worldRank, currentProvinceIndex);
@@ -168,13 +168,13 @@ namespace Drug_Distribution_Mpi_Project
                 {
                     // Send completion to the province leader who assigned this task via world communicator
                     Communicator.world.Send(task.OrderId, task.AssigningProvinceLeaderRank, 1); // Tag 1 for completion
-                    Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to assigning province leader {task.AssigningProvinceLeaderRank}");
+                    Console.WriteLine($"\n[Distributor {worldRank}] Sent completion of order {task.OrderId} to assigning province leader {task.AssigningProvinceLeaderRank}");
                 }
                 else
                 {
                     // Send to local province leader
                     provinceComm.Send(task.OrderId, 0, 1); // Tag 1 for completion
-                    Console.WriteLine($"[Distributor {worldRank}] Sent completion of order {task.OrderId} to local province leader");
+                    Console.WriteLine($"\n[Distributor {worldRank}] Sent completion of order {task.OrderId} to local province leader");
                 }
             }
             catch (Exception ex)
@@ -196,7 +196,7 @@ namespace Drug_Distribution_Mpi_Project
                 };
 
                 Communicator.world.Send(availabilityReport, 0, 10); // Tag 10 for reports to Master
-                Console.WriteLine($"[Distributor {worldRank}] Reported availability to Master");
+                Console.WriteLine($"\n[Distributor {worldRank}] Reported availability to Master");
             }
             catch (Exception ex)
             {
