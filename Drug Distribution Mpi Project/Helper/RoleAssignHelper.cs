@@ -21,7 +21,7 @@ namespace Drug_Distribution_Mpi_Project.Helper
             }
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[Rank {rank}] → Assigned to Province {provinceIndex}");
+            Console.WriteLine($"[Rank {rank}] is Assigned to Province {provinceIndex}");
             Console.ResetColor();
 
             Intracommunicator provinceComm = (Intracommunicator)worldComm.Split(provinceIndex, rank);
@@ -30,14 +30,14 @@ namespace Drug_Distribution_Mpi_Project.Helper
             if (localRank == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[Rank {rank}] → LEADER of province {provinceIndex} (Local Rank: {localRank})");
+                Console.WriteLine($"[Rank {rank}] --> LEADER of province {provinceIndex} (Local Rank: {localRank})");
                 Console.ResetColor();
                 Province.RunAsLeader(provinceIndex, provinceComm, input);
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Blue;
-                Console.WriteLine($"[Rank {rank}] → DISTRIBUTOR in province {provinceIndex} (Local Rank: {localRank})");
+                Console.WriteLine($"[Rank {rank}] --> DISTRIBUTOR in province {provinceIndex} (Local Rank: {localRank})");
                 Console.ResetColor();
                 Distributor.Run(provinceIndex, provinceComm, input);
             }
